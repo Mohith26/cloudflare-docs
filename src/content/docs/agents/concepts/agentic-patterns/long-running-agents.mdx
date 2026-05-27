@@ -5,7 +5,7 @@ description: Build agents that persist for days, weeks, or months — surviving 
 tags:
   - AI
 sidebar:
-  order: 7
+  order: 3
 ---
 
 Build agents that persist for days, weeks, or months — surviving restarts, waking on demand, and managing work that spans far longer than any single request.
@@ -209,7 +209,7 @@ try {
 | ---------------- | ---------------------------------------------------------------------------- |
 | Seconds          | Normal request handling                                                      |
 | Minutes          | `keepAlive()` / `keepAliveWhile()`                                           |
-| Minutes to hours | [Workflows](/agents/concepts/workflows/)                                     |
+| Minutes to hours | [Workflows](/agents/runtime/execution/run-workflows/)                                     |
 | Hours to days    | Async pattern: start job, hibernate, wake on completion                      |
 
 ## Surviving crashes: fibers and recovery
@@ -349,7 +349,7 @@ export class ProjectManager extends Agent<ProjectState> {
 
 ### Pattern: workflow delegation
 
-A production deployment involves multiple steps that must each retry independently — build, test, stage, promote. The project manager should not manage these steps internally; it delegates to a [Workflow](/agents/concepts/workflows/) that handles retries and step sequencing:
+A production deployment involves multiple steps that must each retry independently — build, test, stage, promote. The project manager should not manage these steps internally; it delegates to a [Workflow](/agents/runtime/execution/run-workflows/) that handles retries and step sequencing:
 
 ```ts
 export class ProjectManager extends Agent<ProjectState> {
@@ -678,10 +678,10 @@ The agent does not need to run continuously to do any of this. It just needs to 
 - [Durable Execution](/agents/runtime/execution/durable-execution/) — `runFiber()`, `stash()`, and crash recovery
 - [Schedule tasks](/agents/runtime/execution/schedule-tasks/) — delayed, cron, and interval tasks
 - [Retries](/agents/runtime/execution/retries/) — retry options and patterns
-- [Workflows](/agents/concepts/workflows/) — durable multi-step processing
+- [Workflows](/agents/runtime/execution/run-workflows/) — durable multi-step processing
 - [Store and sync state](/agents/runtime/lifecycle/state/) — `setState()` and persistence
 - [WebSockets](/agents/runtime/communication/websockets/) — lifecycle hooks and hibernation
 - [Callable methods](/agents/runtime/lifecycle/callable-methods/) — RPC via `@callable` and service bindings
 - [Email routing](/agents/communication-channels/email/) — receiving inbound email
 - [Webhooks](/agents/communication-channels/webhooks/) — receiving external events
-- [Human in the loop](/agents/concepts/human-in-the-loop/) — approval flows
+- [Human in the loop](/agents/concepts/agentic-patterns/human-in-the-loop/) — approval flows

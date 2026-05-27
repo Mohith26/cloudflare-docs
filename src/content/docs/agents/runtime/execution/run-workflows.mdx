@@ -12,6 +12,10 @@ import { TypeScriptExample, WranglerConfig, LinkCard } from "~/components";
 
 Integrate [Cloudflare Workflows](/workflows/) with Agents for durable, multi-step background processing while Agents handle real-time communication.
 
+## What are Workflows?
+
+[Cloudflare Workflows](/workflows/) provide durable, multi-step execution for tasks that need to survive failures, retry automatically, and wait for external events. When integrated with Agents, Workflows handle long-running background processing while Agents manage real-time communication.
+
 :::note[Agents vs. Workflows]
 
 Agents excel at real-time communication and state management. Workflows excel at durable execution with automatic retries, failure recovery, and waiting for external events.
@@ -19,6 +23,19 @@ Agents excel at real-time communication and state management. Workflows excel at
 Use Agents alone for chat, messaging, and quick API calls. Use Agent + Workflow for long-running tasks (over 30 seconds), multi-step pipelines, and human approval flows.
 
 :::
+
+Agents and Workflows have complementary strengths:
+
+| Capability | Agents | Workflows |
+| --- | --- | --- |
+| Execution model | Long-lived identity that wakes on events | Run to completion |
+| Real-time communication | WebSockets, HTTP streaming | Not supported |
+| State persistence | Built-in SQL database | Step-level persistence |
+| Failure handling | Application-defined | Automatic retries and recovery |
+| External events | Direct handling | Pause and wait for events |
+| User interaction | Direct, such as chat or UI | Through Agent callbacks |
+
+Use Agents alone for chat, messaging applications, quick API calls, real-time collaboration, and short tasks. Use Agents with Workflows for data processing pipelines, report generation, human-in-the-loop approval flows, guaranteed delivery, and multi-step operations with retry requirements.
 
 ## Quick start
 
@@ -859,6 +876,6 @@ Workflows cannot open WebSocket connections directly. Use `broadcastToClients()`
 
 <LinkCard
 	title="Human-in-the-loop"
-	href="/agents/concepts/human-in-the-loop/"
+	href="/agents/concepts/agentic-patterns/human-in-the-loop/"
 	description="Approval flows and manual intervention patterns."
 />

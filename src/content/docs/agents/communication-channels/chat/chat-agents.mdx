@@ -652,7 +652,7 @@ The right strategy depends on whether the provider supports assistant prefill an
 | OpenAI (Responses API) | Retrieve completed response by ID — zero wasted tokens       | Zero       |
 | Anthropic              | Persist partial, send a synthetic user message to continue   | Medium     |
 
-For how chat recovery fits into the broader long-running agents story, refer to [Long-running agents: Recovering interrupted LLM streams](/agents/concepts/long-running-agents/#recovering-interrupted-llm-streams). For the underlying fiber API, refer to [Durable Execution](/agents/runtime/execution/durable-execution/).
+For how chat recovery fits into the broader long-running agents story, refer to [Long-running agents: Recovering interrupted LLM streams](/agents/concepts/agentic-patterns/long-running-agents/#recovering-interrupted-llm-streams). For the underlying fiber API, refer to [Durable Execution](/agents/runtime/execution/durable-execution/).
 
 ## Client API
 
@@ -891,7 +891,7 @@ This sends a `tool_result` to the LLM with your custom error text, so it can res
 
 `addToolApprovalResponse` (with `approved: false`) auto-continues the conversation when `autoContinueAfterToolResult` is enabled (the default). `addToolOutput` with `state: "output-error"` does **not** auto-continue — call `sendMessage()` afterward if you want the LLM to respond to the error.
 
-For more patterns, refer to [Human-in-the-loop](/agents/concepts/human-in-the-loop/).
+For more patterns, refer to [Human-in-the-loop](/agents/concepts/agentic-patterns/human-in-the-loop/).
 
 ## Custom request data
 
@@ -1536,7 +1536,7 @@ If you are upgrading from an earlier version, replace deprecated calls with thei
 
 <LinkCard
 	title="Human-in-the-loop"
-	href="/agents/concepts/human-in-the-loop/"
+	href="/agents/concepts/agentic-patterns/human-in-the-loop/"
 	description="Approval flows and manual intervention patterns."
 />
 
@@ -1554,6 +1554,6 @@ If you are upgrading from an earlier version, replace deprecated calls with thei
 
 <LinkCard
 	title="Long-running agents"
-	href="/agents/concepts/long-running-agents/"
+	href="/agents/concepts/agentic-patterns/long-running-agents/"
 	description="Lifecycle, recovery patterns, and provider-specific strategies."
 />
