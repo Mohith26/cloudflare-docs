@@ -33,9 +33,9 @@ const tools = [
 			<path class="connection" d="M 490 245 C 490 285 490 295 490 326" />
 		</svg>
 
-		<section class="resource-card inbound-card" aria-labelledby="channels-heading">
+		<section class="resource-card inbound-card" aria-label="Communication channels">
 			<header class="card-header">
-				<h2 id="channels-heading">Communication channels</h2>
+				<div class="card-title">Communication channels</div>
 				<span class="count-badge">{channels.length}</span>
 			</header>
 			<div class="pill-stack">
@@ -48,11 +48,11 @@ const tools = [
 			</div>
 		</section>
 
-		<section class="agent-card" aria-labelledby="agent-card-title">
+		<section class="agent-card" aria-label="Agent">
 			<div class="agent-card-inner">
 				<header class="agent-header">
 					<span class="agent-icon" aria-hidden="true">A</span>
-					<h2 id="agent-card-title">Agent</h2>
+					<div class="agent-title">Agent</div>
 					<span class="status-dot" aria-label="Active"></span>
 				</header>
 
@@ -80,9 +80,9 @@ const tools = [
 			</div>
 		</section>
 
-		<section class="resource-card tools-card" aria-labelledby="tools-heading">
+		<section class="resource-card tools-card" aria-label="Tools">
 			<header class="card-header">
-				<h2 id="tools-heading">Tools</h2>
+				<div class="card-title">Tools</div>
 				<span class="count-badge">{tools.length}</span>
 			</header>
 			<div class="pill-stack">
@@ -203,7 +203,7 @@ const tools = [
 		ring: 1px solid var(--map-line);
 	}
 
-	.card-header h2,
+	.card-title,
 	.section-title,
 	.observability-title {
 		margin: 0;
@@ -317,7 +317,7 @@ const tools = [
 		padding: 0 10px;
 	}
 
-	.agent-header h2 {
+	.agent-title {
 		min-width: 0;
 		margin: 0;
 		flex: 1;
