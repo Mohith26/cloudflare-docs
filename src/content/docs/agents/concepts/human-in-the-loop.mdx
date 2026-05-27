@@ -1,20 +1,21 @@
 ---
-title: Human in the Loop
-pcx_content_type: concept
+title: Human-in-the-loop patterns
+pcx_content_type: how-to
 sidebar:
-  order: 5
+  order: 3
+description: Implement human-in-the-loop functionality using Cloudflare Agents for workflow approvals and MCP elicitation
 ---
 
-import { TypeScriptExample, LinkCard } from "~/components";
+import { TypeScriptExample, WranglerConfig, LinkCard } from "~/components";
 
-Human-in-the-Loop (HITL) workflows integrate human judgment and oversight into automated processes. These workflows pause at critical points for human review, validation, or decision-making before proceeding.
+Human-in-the-loop (HITL) patterns allow agents to pause execution and wait for human approval, confirmation, or input before proceeding. This is essential for compliance, safety, and oversight in agentic systems.
 
 ## Why human-in-the-loop?
 
-- **Compliance**: Regulatory requirements may mandate human approval for certain actions.
-- **Safety**: High-stakes operations (payments, deletions, external communications) need oversight.
-- **Quality**: Human review catches errors AI might miss.
-- **Trust**: Users feel more confident when they can approve critical actions.
+- **Compliance**: Regulatory requirements may mandate human approval for certain actions
+- **Safety**: High-stakes operations (payments, deletions, external communications) need oversight
+- **Quality**: Human review catches errors AI might miss
+- **Trust**: Users feel more confident when they can approve critical actions
 
 ### Common use cases
 
@@ -26,178 +27,380 @@ Human-in-the-Loop (HITL) workflows integrate human judgment and oversight into a
 | AI tool execution   | Confirming tool calls before running |
 | Access control      | Granting permissions, role changes   |
 
-## Choosing an approach
+## Choosing a pattern
 
-The Agents SDK provides five patterns for human-in-the-loop. Choose based on your architecture:
+Cloudflare provides two main patterns for human-in-the-loop:
 
-| Use Case | Pattern | Best For |
-| --- | --- | --- |
-| Long-running workflows | Workflow Approval | Multi-step processes, durable approval gates that can wait hours or weeks |
-| AIChatAgent tools | `needsApproval` | Chat-based tool calls with server-side approval before execution |
-| Client-side tools | `onToolCall` | Tools that need browser APIs or user interaction before execution |
-| MCP servers | Elicitation | MCP tools requesting structured user input during execution |
-| Simple confirmations | State + WebSocket | Lightweight approval flows without AI chat or workflows |
+| Pattern               | Best for                                     | Key API             |
+| --------------------- | -------------------------------------------- | ------------------- |
+| **Workflow approval** | Multi-step processes, durable approval gates | `waitForApproval()` |
+| **MCP elicitation**   | MCP servers requesting structured user input | `elicitInput()`     |
 
-### Decision tree
+Decision guide:
 
-```
-Is this part of a multi-step workflow?
-├── Yes → Use Workflow Approval (waitForApproval)
-└── No → Are you building an MCP server?
-         ├── Yes → Use MCP Elicitation (elicitInput)
-         └── No → Is this an AI chat interaction?
-                  ├── Yes → Does the tool need browser APIs?
-                  │        ├── Yes → Use onToolCall (client-side execution)
-                  │        └── No → Use needsApproval (server-side with approval)
-                  └── No → Use State + WebSocket for simple confirmations
-```
+- Use **Workflow approval** when you need durable, multi-step processes with approval gates that can wait hours, days, or weeks
+- Use **MCP elicitation** when building MCP servers that need to request additional structured input from users during tool execution
 
-## Pattern 1: Workflow approval
+## Workflow-based approval
 
-For durable, multi-step processes with approval gates that can wait hours, days, or weeks. Use [Cloudflare Workflows](/workflows/) with the `waitForApproval()` method.
+For durable, multi-step processes, use [Cloudflare Workflows](/workflows/) with the `waitForApproval()` method. The workflow pauses until a human approves or rejects.
 
-**Key APIs:**
-
-- `waitForApproval(step, { timeout })` — Pause workflow until approved
-- `approveWorkflow(workflowId, { reason?, metadata? })` — Approve a waiting workflow
-- `rejectWorkflow(workflowId, { reason? })` — Reject a waiting workflow
-
-**Best for:** Expense approvals, content publishing pipelines, data export requests
-
-## Pattern 2: `needsApproval` (AI chat tools)
-
-For `AIChatAgent` tools that should pause for user confirmation before executing. Define `needsApproval` on the tool — it can be a boolean or an async predicate based on the tool arguments:
+### Basic pattern
 
 <TypeScriptExample>
 
 ```ts
-tools: {
-	processPayment: tool({
-		description: "Process a payment",
-		inputSchema: z.object({
-			amount: z.number(),
-			recipient: z.string(),
-		}),
-		needsApproval: async ({ amount }) => amount > 100,
-		execute: async ({ amount, recipient }) => charge(amount, recipient),
-	});
+import { Agent } from "agents";
+import { AgentWorkflow } from "agents/workflows";
+import type { AgentWorkflowEvent, AgentWorkflowStep } from "agents/workflows";
+
+type ExpenseParams = {
+	amount: number;
+	description: string;
+	requestedBy: string;
+};
+
+export class ExpenseWorkflow extends AgentWorkflow<
+	ExpenseAgent,
+	ExpenseParams
+> {
+	async run(event: AgentWorkflowEvent<ExpenseParams>, step: AgentWorkflowStep) {
+		const expense = event.payload;
+
+		// Step 1: Validate the expense
+		const validated = await step.do("validate", async () => {
+			if (expense.amount <= 0) {
+				throw new Error("Invalid expense amount");
+			}
+			return { ...expense, validatedAt: Date.now() };
+		});
+
+		// Step 2: Report that we are waiting for approval
+		await this.reportProgress({
+			step: "approval",
+			status: "pending",
+			message: `Awaiting approval for $${expense.amount}`,
+		});
+
+		// Step 3: Wait for human approval (pauses the workflow)
+		const approval = await this.waitForApproval<{ approvedBy: string }>(step, {
+			timeout: "7 days",
+		});
+
+		console.log(`Approved by: ${approval?.approvedBy}`);
+
+		// Step 4: Process the approved expense
+		const result = await step.do("process", async () => {
+			return { expenseId: crypto.randomUUID(), ...validated };
+		});
+
+		await step.reportComplete(result);
+		return result;
+	}
 }
 ```
 
 </TypeScriptExample>
 
-On the client, render pending approvals from message parts and call `addToolApprovalResponse`:
+### Agent methods for approval
+
+The agent provides methods to approve or reject waiting workflows:
 
 <TypeScriptExample>
 
 ```ts
-const { messages, addToolApprovalResponse } = useAgentChat({ agent });
+import { Agent, callable } from "agents";
 
-{
-	messages.map((msg) =>
-		msg.parts
-			.filter(
-				(part) => part.type === "tool" && part.state === "approval-required",
-			)
-			.map((part) => (
-				<div key={part.toolCallId}>
-					<p>
-						Approve {part.toolName}?
-					</p>
-					<button
-						onClick={() =>
-							addToolApprovalResponse({ id: part.toolCallId, approved: true })
-						}
-					>
-						Approve
-					</button>
-					<button
-						onClick={() =>
-							addToolApprovalResponse({
-								id: part.toolCallId,
-								approved: false,
-							})
-						}
-					>
-						Reject
-					</button>
-				</div>
-			)),
-	);
-}
-```
+type PendingApproval = {
+	workflowId: string;
+	amount: number;
+	description: string;
+	requestedBy: string;
+	requestedAt: number;
+};
 
-</TypeScriptExample>
+type ExpenseState = {
+	pendingApprovals: PendingApproval[];
+};
 
-For custom denial messages, use `addToolOutput` with `state: "output-error"` instead of `addToolApprovalResponse`:
+export class ExpenseAgent extends Agent<Env, ExpenseState> {
+	initialState: ExpenseState = {
+		pendingApprovals: [],
+	};
 
-<TypeScriptExample>
+	// Approve a waiting workflow
+	@callable()
+	async approve(workflowId: string, approvedBy: string): Promise<void> {
+		await this.approveWorkflow(workflowId, {
+			reason: "Expense approved",
+			metadata: { approvedBy, approvedAt: Date.now() },
+		});
 
-```ts
-addToolOutput({
-	toolCallId: part.toolCallId,
-	state: "output-error",
-	errorText: "User declined: insufficient budget for this quarter",
-});
-```
+		// Update state to reflect approval
+		this.setState({
+			...this.state,
+			pendingApprovals: this.state.pendingApprovals.filter(
+				(p) => p.workflowId !== workflowId,
+			),
+		});
+	}
 
-</TypeScriptExample>
+	// Reject a waiting workflow
+	@callable()
+	async reject(workflowId: string, reason: string): Promise<void> {
+		await this.rejectWorkflow(workflowId, { reason });
 
-## Pattern 3: `onToolCall` (client-side execution)
+		this.setState({
+			...this.state,
+			pendingApprovals: this.state.pendingApprovals.filter(
+				(p) => p.workflowId !== workflowId,
+			),
+		});
+	}
 
-For tools that need browser APIs (geolocation, clipboard, camera) or user interaction before returning a result. Define the tool on the server without `execute`, then handle it on the client:
+	// Track workflow progress to update pending approvals
+	async onWorkflowProgress(
+		workflowName: string,
+		workflowId: string,
+		progress: unknown,
+	): Promise<void> {
+		const p = progress as { step: string; status: string; message?: string };
 
-<TypeScriptExample>
-
-```ts
-const { messages, sendMessage } = useAgentChat({
-	agent,
-	onToolCall: async ({ toolCall, addToolOutput }) => {
-		if (toolCall.toolName === "getLocation") {
-			const pos = await new Promise((resolve, reject) =>
-				navigator.geolocation.getCurrentPosition(resolve, reject),
-			);
-			addToolOutput({
-				toolCallId: toolCall.toolCallId,
-				output: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+		if (p.step === "approval" && p.status === "pending") {
+			// Add to pending approvals list for UI display
+			this.setState({
+				...this.state,
+				pendingApprovals: [
+					...this.state.pendingApprovals,
+					{
+						workflowId,
+						amount: 0, // Would come from workflow params
+						description: p.message || "",
+						requestedBy: "user",
+						requestedAt: Date.now(),
+					},
+				],
 			});
 		}
-	},
-});
+	}
+}
 ```
 
 </TypeScriptExample>
 
-When `autoContinueAfterToolResult` is `true` (the default), the conversation automatically continues after the client provides the tool output.
+### Timeout handling
 
-## Pattern 4: MCP elicitation
-
-For MCP servers that need to request additional structured input from users during tool execution. The MCP client renders a form based on your JSON Schema:
+Set timeouts to prevent workflows from waiting indefinitely:
 
 <TypeScriptExample>
 
 ```ts
-export class MyMcpAgent extends McpAgent {
+const approval = await this.waitForApproval<{ approvedBy: string }>(step, {
+	timeout: "7 days", // Also supports: "1 hour", "30 minutes", etc.
+});
+
+if (!approval) {
+	// Timeout expired - escalate or auto-reject
+	await step.reportError("Approval timeout - escalating to manager");
+	throw new Error("Approval timeout");
+}
+```
+
+</TypeScriptExample>
+
+### Escalation with scheduling
+
+Use `schedule()` to set up escalation reminders:
+
+<TypeScriptExample>
+
+```ts
+import { Agent, callable } from "agents";
+
+class ExpenseAgent extends Agent<Env, ExpenseState> {
+	@callable()
+	async submitForApproval(expense: ExpenseParams): Promise<string> {
+		// Start the approval workflow
+		const workflowId = await this.runWorkflow("EXPENSE_WORKFLOW", expense);
+
+		// Schedule reminder after 4 hours
+		await this.schedule(Date.now() + 4 * 60 * 60 * 1000, "sendReminder", {
+			workflowId,
+		});
+
+		// Schedule escalation after 24 hours
+		await this.schedule(Date.now() + 24 * 60 * 60 * 1000, "escalateApproval", {
+			workflowId,
+		});
+
+		return workflowId;
+	}
+
+	async sendReminder(payload: { workflowId: string }) {
+		const workflow = this.getWorkflow(payload.workflowId);
+		if (workflow?.status === "waiting") {
+			// Send reminder notification
+			console.log("Reminder: approval still pending");
+		}
+	}
+
+	async escalateApproval(payload: { workflowId: string }) {
+		const workflow = this.getWorkflow(payload.workflowId);
+		if (workflow?.status === "waiting") {
+			// Escalate to manager
+			console.log("Escalating to manager");
+		}
+	}
+}
+```
+
+</TypeScriptExample>
+
+### Audit trail with SQL
+
+Use `this.sql` to maintain an immutable audit trail:
+
+<TypeScriptExample>
+
+```ts
+import { Agent, callable } from "agents";
+
+class ExpenseAgent extends Agent<Env, ExpenseState> {
+	async onStart() {
+		// Create audit table
+		this.sql`
+      CREATE TABLE IF NOT EXISTS approval_audit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        workflow_id TEXT NOT NULL,
+        decision TEXT NOT NULL CHECK(decision IN ('approved', 'rejected')),
+        decided_by TEXT NOT NULL,
+        decided_at INTEGER NOT NULL,
+        reason TEXT
+      )
+    `;
+	}
+
+	@callable()
+	async approve(
+		workflowId: string,
+		userId: string,
+		reason?: string,
+	): Promise<void> {
+		// Record the decision in SQL (immutable audit log)
+		this.sql`
+      INSERT INTO approval_audit (workflow_id, decision, decided_by, decided_at, reason)
+      VALUES (${workflowId}, 'approved', ${userId}, ${Date.now()}, ${reason || null})
+    `;
+
+		// Process the approval
+		await this.approveWorkflow(workflowId, {
+			reason: reason || "Approved",
+			metadata: { approvedBy: userId },
+		});
+	}
+}
+```
+
+</TypeScriptExample>
+
+### Configuration
+
+<WranglerConfig>
+
+```jsonc
+{
+	"name": "expense-approval",
+	"main": "src/index.ts",
+	"compatibility_date": "$today",
+	"compatibility_flags": ["nodejs_compat"],
+	"durable_objects": {
+		"bindings": [{ "name": "EXPENSE_AGENT", "class_name": "ExpenseAgent" }],
+	},
+	"workflows": [
+		{
+			"name": "expense-workflow",
+			"binding": "EXPENSE_WORKFLOW",
+			"class_name": "ExpenseWorkflow",
+		},
+	],
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["ExpenseAgent"] }],
+}
+```
+
+</WranglerConfig>
+
+## MCP elicitation
+
+When building MCP servers with `McpAgent`, you can request additional user input during tool execution using **elicitation**. The MCP client renders a form based on your JSON Schema and returns the user's response.
+
+### Basic pattern
+
+<TypeScriptExample>
+
+```ts
+import { McpAgent } from "agents/mcp";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+
+type State = { counter: number };
+
+export class CounterMCP extends McpAgent<Env, State, {}> {
+	server = new McpServer({
+		name: "counter-server",
+		version: "1.0.0",
+	});
+
+	initialState: State = { counter: 0 };
+
 	async init() {
-		this.server.server.setRequestHandler(
-			CallToolRequestSchema,
-			async (request, extra) => {
-				const result = await this.server.server.elicitInput({
-					message: "Please confirm the transfer details",
-					requestedSchema: {
-						type: "object",
-						properties: {
-							confirmed: { type: "boolean", description: "Confirm transfer?" },
-							notes: { type: "string", description: "Optional notes" },
+		this.server.tool(
+			"increase-counter",
+			"Increase the counter by a user-specified amount",
+			{ confirm: z.boolean().describe("Do you want to increase the counter?") },
+			async ({ confirm }, extra) => {
+				if (!confirm) {
+					return { content: [{ type: "text", text: "Cancelled." }] };
+				}
+
+				// Request additional input from the user
+				const userInput = await this.server.server.elicitInput(
+					{
+						message: "By how much do you want to increase the counter?",
+						requestedSchema: {
+							type: "object",
+							properties: {
+								amount: {
+									type: "number",
+									title: "Amount",
+									description: "The amount to increase the counter by",
+								},
+							},
+							required: ["amount"],
 						},
-						required: ["confirmed"],
 					},
+					{ relatedRequestId: extra.requestId },
+				);
+
+				// Check if user accepted or cancelled
+				if (userInput.action !== "accept" || !userInput.content) {
+					return { content: [{ type: "text", text: "Cancelled." }] };
+				}
+
+				// Use the input
+				const amount = Number(userInput.content.amount);
+				this.setState({
+					...this.state,
+					counter: this.state.counter + amount,
 				});
 
-				if (result.action === "accept" && result.content?.confirmed) {
-					return { content: [{ type: "text", text: "Transfer confirmed" }] };
-				}
-				return { content: [{ type: "text", text: "Transfer cancelled" }] };
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Counter increased by ${amount}, now at ${this.state.counter}`,
+						},
+					],
+				};
 			},
 		);
 	}
@@ -206,100 +409,146 @@ export class MyMcpAgent extends McpAgent {
 
 </TypeScriptExample>
 
-**Best for:** Interactive tool confirmations, gathering additional parameters mid-execution
+## Elicitation vs workflow approval
 
-## How workflows handle approvals
+| Aspect       | MCP Elicitation               | Workflow Approval             |
+| ------------ | ----------------------------- | ----------------------------- |
+| **Context**  | MCP server tool execution     | Multi-step workflow processes |
+| **Duration** | Immediate (within tool call)  | Can wait hours/days/weeks     |
+| **UI**       | JSON Schema-based form        | Custom UI via agent state     |
+| **State**    | MCP session state             | Durable workflow state        |
+| **Use case** | Interactive input during tool | Approval gates in pipelines   |
 
-![A human-in-the-loop diagram](~/assets/images/agents/human-in-the-loop.svg)
+## Building approval UIs
 
-In a workflow-based approval:
+### Pending approvals list
 
-1. The workflow reaches an approval step and calls `waitForApproval()`
-2. The workflow pauses and reports progress to the agent
-3. The agent updates its state with the pending approval
-4. Connected clients see the pending approval and can approve or reject
-5. When approved, the workflow resumes with the approval metadata
-6. If rejected or timed out, the workflow handles the rejection appropriately
+Use the agent's state to display pending approvals in your UI:
 
-## Timeouts and escalation
+```tsx
+import { useAgent } from "agents/react";
 
-Set timeouts to prevent workflows from waiting indefinitely:
+function PendingApprovals() {
+	const { state, agent } = useAgent({
+		agent: "expense-agent",
+		name: "main",
+	});
 
-<TypeScriptExample>
+	if (!state?.pendingApprovals?.length) {
+		return <p>No pending approvals</p>;
+	}
 
-```ts
-const approval = await this.waitForApproval(step, {
-	timeout: "7 days",
-});
+	return (
+		<div className="approval-list">
+			{state.pendingApprovals.map((item) => (
+				<div key={item.workflowId} className="approval-card">
+					<h3>${item.amount}</h3>
+					<p>{item.description}</p>
+					<p>Requested by {item.requestedBy}</p>
+
+					<div className="actions">
+						<button
+							onClick={() => agent.stub.approve(item.workflowId, "admin")}
+						>
+							Approve
+						</button>
+						<button
+							onClick={() => agent.stub.reject(item.workflowId, "Declined")}
+						>
+							Reject
+						</button>
+					</div>
+				</div>
+			))}
+		</div>
+	);
+}
 ```
 
-</TypeScriptExample>
+## Multi-approver patterns
 
-Use [scheduling](/agents/api-reference/schedule-tasks/) for escalation:
+For sensitive operations requiring multiple approvers:
 
 <TypeScriptExample>
 
 ```ts
-await this.schedule(86400, "sendApprovalReminder", { workflowId });
+import { Agent, callable } from "agents";
 
-await this.schedule(604800, "escalateToManager", { workflowId });
+type MultiApproval = {
+	workflowId: string;
+	requiredApprovals: number;
+	currentApprovals: Array<{ userId: string; approvedAt: number }>;
+	rejections: Array<{ userId: string; rejectedAt: number; reason: string }>;
+};
+
+type State = {
+	pendingMultiApprovals: MultiApproval[];
+};
+
+class MultiApprovalAgent extends Agent<Env, State> {
+	@callable()
+	async approveMulti(workflowId: string, userId: string): Promise<boolean> {
+		const approval = this.state.pendingMultiApprovals.find(
+			(p) => p.workflowId === workflowId,
+		);
+		if (!approval) throw new Error("Approval not found");
+
+		// Check if user already approved
+		if (approval.currentApprovals.some((a) => a.userId === userId)) {
+			throw new Error("Already approved by this user");
+		}
+
+		// Add this user's approval
+		approval.currentApprovals.push({ userId, approvedAt: Date.now() });
+
+		// Check if we have enough approvals
+		if (approval.currentApprovals.length >= approval.requiredApprovals) {
+			// Execute the approved action
+			await this.approveWorkflow(workflowId, {
+				metadata: { approvers: approval.currentApprovals },
+			});
+			return true;
+		}
+
+		this.setState({ ...this.state });
+		return false; // Still waiting for more approvals
+	}
+}
 ```
 
 </TypeScriptExample>
 
 ## Best practices
 
-### Audit trails
-
-Maintain immutable audit logs of all approval decisions using the [SQL API](/agents/api-reference/store-and-sync-state/). Record:
-
-- Who made the decision
-- When the decision was made
-- The reason or justification
-- Any relevant metadata
-
-### Long-term state persistence
-
-Human review processes do not operate on predictable timelines. A reviewer might need days or weeks to make a decision. Your system needs to maintain state consistency throughout this period — the original request, intermediate decisions, partial progress, and review history.
-
-:::note[Tip]
-[Durable Objects](/durable-objects/) provide persistent compute instances that maintain state for hours, weeks, or months — ideal for long-lived approval flows.
-:::
-
-### Continuous improvement
-
-Human reviewers play a crucial role in evaluating and improving LLM performance:
-
-- **Decision quality assessment**: Have reviewers evaluate the LLM's reasoning process and decision points.
-- **Edge case identification**: Use human expertise to identify scenarios where performance could be improved.
-- **Feedback collection**: Gather structured feedback that can be used to fine-tune the LLM. [AI Gateway](/ai-gateway/evaluations/add-human-feedback/) can help set up an LLM feedback loop.
-
-### Error handling and recovery
-
-Your system should gracefully handle reviewer unavailability, system outages, conflicting reviews, and timeout expiration. Implement clear escalation paths for exceptional cases and automatic checkpointing that allows workflows to resume from the last stable state after any interruption.
+1. **Define clear approval criteria** — Only require confirmation for actions with meaningful consequences (payments, emails, data changes)
+2. **Provide detailed context** — Show users exactly what the action will do, including all arguments
+3. **Implement timeouts** — Use `schedule()` to escalate or auto-reject after reasonable periods
+4. **Maintain audit trails** — Use `this.sql` to record all approval decisions for compliance
+5. **Handle connection drops** — Store pending approvals in agent state so they survive disconnections
+6. **Graceful degradation** — Provide fallback behavior if approvals are rejected
 
 ## Next steps
 
 <LinkCard
-	title="Human-in-the-loop patterns"
-	href="/agents/guides/human-in-the-loop/"
-	description="Full implementation examples with workflows and chat tools."
-/>
-
-<LinkCard
-	title="Chat agents — Tool approval"
-	href="/agents/api-reference/chat-agents/#tool-approval-human-in-the-loop"
-	description="needsApproval and addToolApprovalResponse reference."
-/>
-
-<LinkCard
 	title="Run Workflows"
-	href="/agents/api-reference/run-workflows/"
-	description="Complete API for workflow approvals."
+	href="/agents/runtime/execution/run-workflows/"
+	description="Complete waitForApproval() API reference."
 />
 
 <LinkCard
-	title="MCP elicitation"
-	href="/agents/api-reference/mcp-agent-api/#elicitation-human-in-the-loop"
-	description="Interactive input from MCP clients."
+	title="MCP servers"
+	href="/agents/mcp/apis/agent-api/"
+	description="Build MCP agents with elicitation."
+/>
+
+<LinkCard
+	title="Email notifications"
+	href="/email-routing/email-workers/send-email-workers/"
+	description="Send notifications for pending approvals."
+/>
+
+<LinkCard
+	title="Schedule tasks"
+	href="/agents/runtime/execution/schedule-tasks/"
+	description="Implement approval timeouts with schedules."
 />

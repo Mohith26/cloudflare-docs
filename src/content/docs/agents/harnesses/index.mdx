@@ -1,0 +1,55 @@
+---
+title: Harnesses
+pcx_content_type: concept
+sidebar:
+  order: 5
+  group:
+    hideIndex: true
+---
+
+import { DirectoryListing, LinkCard } from "~/components";
+
+A harness is the loop that runs an agent. It decides how the agent receives a message, calls a model, selects tools, handles tool results, streams output, persists state, and decides whether to continue or stop.
+
+You can build this loop yourself with the [Agents SDK runtime](/agents/runtime/agents-api/), or use an opinionated harness like [Project Think](/agents/harnesses/think/).
+
+## Harnesses and runtime
+
+Harnesses sit on top of the Agents SDK runtime:
+
+- **The runtime** provides durable infrastructure: the `Agent` class, state, sessions, routing, WebSockets, scheduling, fibers, and observability.
+- **The harness** provides agent behavior: the model call, prompt construction, tool selection, stream handling, memory strategy, and extension points.
+
+Use the runtime directly when you need full control over every part of the loop. Use a harness when you want common agent behavior packaged into a reusable base class.
+
+## Current harnesses
+
+<LinkCard
+	title="Project Think"
+	href="/agents/harnesses/think/"
+	description="An opinionated chat agent harness with built-in tools, persistent memory, lifecycle hooks, streaming, and sub-agent RPC."
+/>
+
+## Related resources
+
+<LinkCard
+	title="Agents SDK runtime"
+	href="/agents/runtime/agents-api/"
+	description="Build your own agent loop directly on the Agent class."
+/>
+
+<LinkCard
+	title="Sessions"
+	href="/agents/runtime/lifecycle/sessions/"
+	description="Store conversation context and memory across turns."
+/>
+
+<LinkCard
+	title="Durable execution with fibers"
+	href="/agents/runtime/execution/durable-execution/"
+	description="Recover long-running agent work after Durable Object eviction."
+/>
+
+## All harness pages
+
+<DirectoryListing />

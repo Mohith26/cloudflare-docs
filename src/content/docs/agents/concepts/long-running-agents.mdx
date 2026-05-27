@@ -114,7 +114,7 @@ A hibernated agent can be woken by any of these sources:
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
 | **HTTP request**         | Any request to the agent's URL triggers `onRequest()`                                                                                                                  | A webhook from GitHub                   |
 | **WebSocket connection** | A client connects, triggering `onConnect()`                                                                                                                            | A team member opens the dashboard       |
-| **RPC call**             | Another Worker or agent calls a method via [service binding](/workers/runtime-apis/bindings/service-bindings/) or [`@callable`](/agents/api-reference/callable-methods/) | A coordinator agent delegates a task    |
+| **RPC call**             | Another Worker or agent calls a method via [service binding](/workers/runtime-apis/bindings/service-bindings/) or [`@callable`](/agents/runtime/lifecycle/callable-methods/) | A coordinator agent delegates a task    |
 | **Scheduled alarm**      | A stored schedule fires, triggering your callback                                                                                                                      | Daily standup reminder at 9am           |
 | **Email**                | An inbound email triggers `onEmail()`                                                                                                                                  | A team member replies to a status email |
 
@@ -216,7 +216,7 @@ try {
 
 An agent can be evicted at any time — a deploy, a platform restart, or hitting resource limits. If the agent was mid-task, that work is lost unless it was checkpointed.
 
-[`runFiber()`](/agents/api-reference/durable-execution/) provides crash-recoverable execution. It persists a row in SQLite for the duration of the work, and lets you `stash()` intermediate state. If the agent is evicted, the fiber row survives, and `onFiberRecovered()` is called on the next activation.
+[`runFiber()`](/agents/runtime/execution/durable-execution/) provides crash-recoverable execution. It persists a row in SQLite for the duration of the work, and lets you `stash()` intermediate state. If the agent is evicted, the fiber row survives, and `onFiberRecovered()` is called on the next activation.
 
 ```ts
 export class ProjectManager extends Agent<ProjectState> {
@@ -257,7 +257,7 @@ In `wrangler dev`, fiber recovery works identically to production. Kill the wran
 
 :::
 
-For the full API reference — `FiberContext`, `FiberRecoveryContext`, concurrent fibers, inline vs fire-and-forget patterns — refer to [Durable Execution](/agents/api-reference/durable-execution/).
+For the full API reference — `FiberContext`, `FiberRecoveryContext`, concurrent fibers, inline vs fire-and-forget patterns — refer to [Durable Execution](/agents/runtime/execution/durable-execution/).
 
 ## Handling long async operations
 
@@ -520,7 +520,7 @@ export class ProjectManager extends Agent<ProjectState> {
 
 Sub-agents are independent Durable Objects. They have their own state, their own schedules, and their own lifecycle. The parent does not need to stay alive while the sub-agent works — it can start the work, hibernate, and be woken by a callback or scheduled check.
 
-For the full `subAgent()` API — typed RPC stubs, abort, delete, storage isolation, and limitations — refer to [Sub-agents](/agents/api-reference/sub-agents/). For AI-specific sub-agent streaming (running full LLM turns through a child agent), refer to [Think: Sub-agent RPC](/agents/api-reference/think/#sub-agent-rpc-and-programmatic-turns).
+For the full `subAgent()` API — typed RPC stubs, abort, delete, storage isolation, and limitations — refer to [Sub-agents](/agents/runtime/execution/sub-agents/). For AI-specific sub-agent streaming (running full LLM turns through a child agent), refer to [Think: Sub-agent RPC](/agents/harnesses/think/#sub-agent-rpc-and-programmatic-turns).
 
 ## Recovering interrupted LLM streams
 
@@ -675,13 +675,13 @@ The agent does not need to run continuously to do any of this. It just needs to 
 
 ## Related
 
-- [Durable Execution](/agents/api-reference/durable-execution/) — `runFiber()`, `stash()`, and crash recovery
-- [Schedule tasks](/agents/api-reference/schedule-tasks/) — delayed, cron, and interval tasks
-- [Retries](/agents/api-reference/retries/) — retry options and patterns
+- [Durable Execution](/agents/runtime/execution/durable-execution/) — `runFiber()`, `stash()`, and crash recovery
+- [Schedule tasks](/agents/runtime/execution/schedule-tasks/) — delayed, cron, and interval tasks
+- [Retries](/agents/runtime/execution/retries/) — retry options and patterns
 - [Workflows](/agents/concepts/workflows/) — durable multi-step processing
-- [Store and sync state](/agents/api-reference/store-and-sync-state/) — `setState()` and persistence
-- [WebSockets](/agents/api-reference/websockets/) — lifecycle hooks and hibernation
-- [Callable methods](/agents/api-reference/callable-methods/) — RPC via `@callable` and service bindings
-- [Email routing](/agents/api-reference/email/) — receiving inbound email
-- [Webhooks](/agents/guides/webhooks/) — receiving external events
+- [Store and sync state](/agents/runtime/lifecycle/state/) — `setState()` and persistence
+- [WebSockets](/agents/runtime/communication/websockets/) — lifecycle hooks and hibernation
+- [Callable methods](/agents/runtime/lifecycle/callable-methods/) — RPC via `@callable` and service bindings
+- [Email routing](/agents/communication-channels/email/) — receiving inbound email
+- [Webhooks](/agents/communication-channels/webhooks/) — receiving external events
 - [Human in the loop](/agents/concepts/human-in-the-loop/) — approval flows

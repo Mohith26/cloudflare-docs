@@ -13,6 +13,7 @@ head:
 
 import {
 	CardGrid,
+	AgentsPlatformDiagram,
 	Description,
 	Feature,
 	LinkButton,
@@ -30,6 +31,8 @@ import {
 
 Most AI applications today are stateless — they process a request, return a response, and forget everything. Real agents need more. They need to remember conversations, act on schedules, call tools, coordinate with other agents, and stay connected to users in real-time. The Agents SDK gives you all of this as a TypeScript class.
 
+<AgentsPlatformDiagram />
+
 Each agent runs on a [Durable Object](/durable-objects/) — a stateful micro-server with its own SQL database, WebSocket connections, and scheduling. Deploy once and Cloudflare runs your agents across its global network, scaling to tens of millions of instances. No infrastructure to manage, no sessions to reconstruct, no state to externalize.
 
 ### Get started
@@ -42,11 +45,11 @@ cd agents-starter && npm install
 npm run dev
 ```
 
-The starter includes streaming AI chat, server-side and client-side tools, human-in-the-loop approval, and task scheduling — a foundation you can build on or tear apart. You can also swap in [OpenAI, Anthropic, Google Gemini, or any other provider](/agents/api-reference/using-ai-models/).
+The starter includes streaming AI chat, server-side and client-side tools, human-in-the-loop approval, and task scheduling — a foundation you can build on or tear apart. You can also swap in [OpenAI, Anthropic, Google Gemini, or any other provider](/agents/runtime/operations/using-ai-models/).
 
 <LinkCard
 	title="Build a chat agent"
-	href="/agents/getting-started/build-a-chat-agent/"
+	href="/agents/examples/chat-agent/"
 	description="Step-by-step tutorial that walks through the starter and shows how to customize it."
 />
 
@@ -58,15 +61,15 @@ The starter includes streaming AI chat, server-side and client-side tools, human
 
 ### What agents can do
 
-- **Remember everything** — Every agent has a built-in [SQL database](/agents/api-reference/store-and-sync-state/) and key-value state that syncs to connected clients in real-time. State survives restarts, deploys, and hibernation.
-- **Build AI chat** — [`AIChatAgent`](/agents/api-reference/chat-agents/) gives you streaming AI chat with automatic message persistence, resumable streams, and tool support. Pair it with the [`useAgentChat`](/agents/api-reference/chat-agents/) React hook to build chat UIs in minutes.
-- **Think with any model** — Call [any AI model](/agents/api-reference/using-ai-models/) — Workers AI, OpenAI, Anthropic, Gemini — and stream responses over [WebSockets](/agents/api-reference/websockets/) or [Server-Sent Events](/agents/api-reference/http-sse/). Long-running reasoning models that take minutes to respond work out of the box.
-- **Use and serve tools** — Define server-side tools, client-side tools that run in the browser, and [human-in-the-loop](/agents/concepts/human-in-the-loop/) approval flows. Expose your agent's tools to other agents and LLMs via [MCP](/agents/api-reference/mcp-agent-api/).
-- **Act on their own** — [Schedule tasks](/agents/api-reference/schedule-tasks/) on a delay, at a specific time, or on a cron. Agents can wake themselves up, do work, and go back to sleep — without a user present.
-- **Browse the web** — Give your agents [browser tools](/agents/api-reference/browse-the-web/) powered by the Chrome DevTools Protocol to scrape, screenshot, debug, and interact with web pages.
-- **Talk to users** — Build real-time [voice agents](/agents/api-reference/voice/) with speech-to-text, text-to-speech, and conversation persistence — audio streams over WebSocket.
-- **Orchestrate work** — Run multi-step [workflows](/agents/api-reference/run-workflows/) with automatic retries, or coordinate across multiple agents.
-- **React to events** — Handle [inbound email](/agents/api-reference/email/), HTTP requests, WebSocket messages, and state changes — all from the same class.
+- **Remember everything** — Every agent has a built-in [SQL database](/agents/runtime/lifecycle/state/) and key-value state that syncs to connected clients in real-time. State survives restarts, deploys, and hibernation.
+- **Build AI chat** — [`AIChatAgent`](/agents/communication-channels/chat/chat-agents/) gives you streaming AI chat with automatic message persistence, resumable streams, and tool support. Pair it with the [`useAgentChat`](/agents/communication-channels/chat/chat-agents/) React hook to build chat UIs in minutes.
+- **Think with any model** — Call [any AI model](/agents/runtime/operations/using-ai-models/) — Workers AI, OpenAI, Anthropic, Gemini — and stream responses over [WebSockets](/agents/runtime/communication/websockets/) or [Server-Sent Events](/agents/runtime/communication/http-sse/). Long-running reasoning models that take minutes to respond work out of the box.
+- **Use and serve tools** — Define server-side tools, client-side tools that run in the browser, and [human-in-the-loop](/agents/concepts/human-in-the-loop/) approval flows. Expose your agent's tools to other agents and LLMs via [MCP](/agents/mcp/apis/agent-api/).
+- **Act on their own** — [Schedule tasks](/agents/runtime/execution/schedule-tasks/) on a delay, at a specific time, or on a cron. Agents can wake themselves up, do work, and go back to sleep — without a user present.
+- **Browse the web** — Give your agents [browser tools](/agents/tools/browser/) powered by the Chrome DevTools Protocol to scrape, screenshot, debug, and interact with web pages.
+- **Talk to users** — Build real-time [voice agents](/agents/communication-channels/voice/) with speech-to-text, text-to-speech, and conversation persistence — audio streams over WebSocket.
+- **Orchestrate work** — Run multi-step [workflows](/agents/runtime/execution/run-workflows/) with automatic retries, or coordinate across multiple agents.
+- **React to events** — Handle [inbound email](/agents/communication-channels/email/), HTTP requests, WebSocket messages, and state changes — all from the same class.
 
 ### How it works
 
@@ -127,7 +130,7 @@ export class ChatAgent extends AIChatAgent {
 
 </TypeScriptExample>
 
-Refer to the [quick start](/agents/getting-started/quick-start/) for a full walkthrough, the [chat agents guide](/agents/api-reference/chat-agents/) for the full chat API, or the [Agents API reference](/agents/api-reference/agents-api/) for the complete SDK.
+Refer to the [quick start](/agents/getting-started/quick-start/) for a full walkthrough, the [chat agents guide](/agents/communication-channels/chat/chat-agents/) for the full chat API, or the [Agents API reference](/agents/runtime/agents-api/) for the complete SDK.
 
 ---
 
