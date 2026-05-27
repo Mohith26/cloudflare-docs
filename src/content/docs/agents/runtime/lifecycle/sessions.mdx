@@ -5,12 +5,20 @@ description: Persistent conversation storage with tree-structured messages, cont
 tags:
   - AI
 sidebar:
-  order: 6
+  order: 18
+products:
+  - agents
 ---
 
-import { TypeScriptExample, InlineBadge, LinkCard } from "~/components";
+import {
+	InlineBadge,
+	LinkCard,
+	PackageManagers,
+	TypeScriptExample,
+	WranglerConfig,
+} from "~/components";
 
-The Session API provides persistent conversation storage for agents, with tree-structured messages (inspired by [Pi](https://pi.dev)), context blocks, compaction, full-text search, and AI-controllable tools. It runs entirely on Durable Object SQLite — no external database needed.
+The Session API provides persistent conversation storage for agents, with tree-structured messages (inspired by [Pi](https://pi.dev)), context blocks, compaction, full-text search, and AI-controllable tools. By default, it uses Durable Object SQLite. External Postgres storage is also available for apps that need shared database access, analytics, or cross-Durable Object queries.
 
 :::caution[Experimental]
 
@@ -39,7 +47,7 @@ class MyAgent extends Agent {
 
 	async onMessage(message: unknown) {
 		await this.session.appendMessage(message);
-		const history = this.session.getHistory();
+		const history = await this.session.getHistory();
 		const system = await this.session.freezeSystemPrompt();
 		const tools = await this.session.tools();
 		// Pass history, system prompt, and tools to your LLM
@@ -100,18 +108,18 @@ const session = new Session(new AgentSessionProvider(this), {
 
 All builder methods return `this` for chaining. Order does not matter — providers are resolved lazily on first use.
 
-| Method | Description |
-| ------ | ----------- |
-| `Session.create(agent)` | Static factory. `agent` is any object with a `sql` tagged template method (your Agent or Durable Object). |
-| `.forSession(sessionId)` | Namespace this session by ID. Required for multi-session isolation when not using `SessionManager`. |
-| `.withContext(label, options?)` | Add a context block. Refer to [Context blocks](#context-blocks). |
-| `.withCachedPrompt(provider?)` | Enable system prompt persistence. The prompt is frozen on first use and survives hibernation and eviction. |
-| `.onCompaction(fn)` | Register a compaction function. Refer to [Compaction](#compaction). |
-| `.compactAfter(tokenThreshold)` | Auto-compact when estimated token count exceeds the threshold. Requires `.onCompaction()`. |
+| Method                          | Description                                                                                                |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `Session.create(agent)`         | Static factory. `agent` is any object with a `sql` tagged template method (your Agent or Durable Object).  |
+| `.forSession(sessionId)`        | Namespace this session by ID. Required for multi-session isolation when not using `SessionManager`.        |
+| `.withContext(label, options?)` | Add a context block. Refer to [Context blocks](#context-blocks).                                           |
+| `.withCachedPrompt(provider?)`  | Enable system prompt persistence. The prompt is frozen on first use and survives hibernation and eviction. |
+| `.onCompaction(fn)`             | Register a compaction function. Refer to [Compaction](#compaction).                                        |
+| `.compactAfter(tokenThreshold)` | Auto-compact when estimated token count exceeds the threshold. Requires `.onCompaction()`.                 |
 
 ## Messages
 
-Messages use the `SessionMessage` type — a minimal shape with `id`, `role`, `parts`, and optional `createdAt`. The Vercel AI SDK's `UIMessage` is structurally compatible and can be passed directly. The session stores messages in a tree structure via `parent_id`, enabling branching conversations.
+Messages use the `SessionMessage` type — a minimal shape with `id`, `role`, `parts`, and optional `createdAt`. The AI SDK's `UIMessage` is structurally compatible and can be passed directly. The session stores messages in a tree structure via `parent_id`, enabling branching conversations.
 
 <TypeScriptExample>
 
@@ -121,20 +129,20 @@ await session.appendMessage(message);
 await session.appendMessage(message, parentId);
 
 // Update an existing message (matched by message.id)
-session.updateMessage(message);
+await session.updateMessage(message);
 
 // Delete specific messages
-session.deleteMessages(["msg-1", "msg-2"]);
+await session.deleteMessages(["msg-1", "msg-2"]);
 
 // Clear all messages and skill state
-session.clearMessages();
+await session.clearMessages();
 ```
 
 </TypeScriptExample>
 
 :::note
 
-`appendMessage()` is `async` because it may trigger auto-compaction. The underlying SQLite write is synchronous. All other write methods (`updateMessage`, `deleteMessages`, `clearMessages`) are synchronous.
+Session methods are async. SQLite-backed sessions are usually fast, but external providers may perform network I/O, and `appendMessage()` may also trigger auto-compaction.
 
 :::
 
@@ -144,19 +152,19 @@ session.clearMessages();
 
 ```ts
 // Linear history from root to the latest leaf
-const messages = session.getHistory();
+const messages = await session.getHistory();
 
 // History to a specific leaf (for branching)
-const branch = session.getHistory(leafId);
+const branch = await session.getHistory(leafId);
 
 // Get a single message
-const msg = session.getMessage("msg-1");
+const msg = await session.getMessage("msg-1");
 
 // Get the newest message
-const latest = session.getLatestLeaf();
+const latest = await session.getLatestLeaf();
 
 // Count messages in path
-const count = session.getPathLength();
+const count = await session.getPathLength();
 ```
 
 </TypeScriptExample>
@@ -169,7 +177,7 @@ Messages form a tree. When you `appendMessage` with a `parentId` that already ha
 
 ```ts
 // Get all child messages that branch from messageId
-const branches = session.getBranches(messageId);
+const branches = await session.getBranches(messageId);
 ```
 
 </TypeScriptExample>
@@ -183,13 +191,13 @@ Full-text search over the conversation history using SQLite FTS5:
 <TypeScriptExample>
 
 ```ts
-const results = session.search("deployment Friday", { limit: 10 });
+const results = await session.search("deployment Friday", { limit: 10 });
 // Returns: Array<{ id, role, content, createdAt? }>
 ```
 
 </TypeScriptExample>
 
-Uses porter stemming and unicode tokenization. The search covers all messages in the session.
+SQLite-backed sessions use FTS5 with porter stemming and unicode tokenization. Postgres-backed sessions use the provider's Postgres full-text index. `search()` throws if the session provider does not support search.
 
 ## Context blocks
 
@@ -199,12 +207,12 @@ Context blocks are persistent key-value sections injected into the system prompt
 
 There are four provider types, detected by duck-typing:
 
-| Provider | Interface | Behavior | AI tool |
-| -------- | --------- | -------- | ------- |
-| **ContextProvider** | `get()` | Read-only block in system prompt | — |
-| **WritableContextProvider** | `get()` + `set()` | Writable via AI | `set_context` |
-| **SkillProvider** | `get()` + `load()` + `set?()` | On-demand keyed documents. `get()` returns a metadata listing; `load(key)` fetches full content. | `load_context`, `unload_context`, `set_context` |
-| **SearchProvider** | `get()` + `search()` + `set?()` | Full-text searchable entries. `get()` returns a summary; `search(query)` runs FTS5. | `search_context`, `set_context` |
+| Provider                    | Interface                       | Behavior                                                                                         | AI tool                                         |
+| --------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| **ContextProvider**         | `get()`                         | Read-only block in system prompt                                                                 | —                                               |
+| **WritableContextProvider** | `get()` + `set()`               | Writable via AI                                                                                  | `set_context`                                   |
+| **SkillProvider**           | `get()` + `load()` + `set?()`   | On-demand keyed documents. `get()` returns a metadata listing; `load(key)` fetches full content. | `load_context`, `unload_context`, `set_context` |
+| **SearchProvider**          | `get()` + `search()` + `set?()` | Full-text searchable entries. `get()` returns a summary; `search(query)` runs FTS5.              | `search_context`, `set_context`                 |
 
 ### Built-in providers
 
@@ -408,8 +416,8 @@ When `getHistory()` is called, compaction overlays are applied transparently —
 const result = await session.compact();
 
 // Or manage overlays directly
-session.addCompaction("Summary of messages 1-50", "msg-1", "msg-50");
-const overlays = session.getCompactions();
+await session.addCompaction("Summary of messages 1-50", "msg-1", "msg-50");
+const overlays = await session.getCompactions();
 ```
 
 </TypeScriptExample>
@@ -450,13 +458,13 @@ Context blocks, prompt caching, and compaction settings are propagated to all se
 
 ### Builder methods
 
-| Method | Description |
-| ------ | ----------- |
-| `SessionManager.create(agent)` | Static factory. |
-| `.withContext(label, options?)` | Add context block template for all sessions. |
-| `.withCachedPrompt(provider?)` | Enable prompt persistence for all sessions. |
-| `.onCompaction(fn)` | Register compaction function for all sessions. |
-| `.compactAfter(tokenThreshold)` | Auto-compact threshold for all sessions. |
+| Method                          | Description                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `SessionManager.create(agent)`  | Static factory.                                                                                         |
+| `.withContext(label, options?)` | Add context block template for all sessions.                                                            |
+| `.withCachedPrompt(provider?)`  | Enable prompt persistence for all sessions.                                                             |
+| `.onCompaction(fn)`             | Register compaction function for all sessions.                                                          |
+| `.compactAfter(tokenThreshold)` | Auto-compact threshold for all sessions.                                                                |
 | `.withSearchableHistory(label)` | Add a cross-session searchable history block. The model can search past conversations from any session. |
 
 ### Session lifecycle
@@ -465,26 +473,26 @@ Context blocks, prompt caching, and compaction settings are propagated to all se
 
 ```ts
 // Create a new session
-const info = manager.create("My Chat");
+const info = await manager.create("My Chat");
 
 // Create with metadata
-const info2 = manager.create("My Chat", {
+const info2 = await manager.create("My Chat", {
 	parentSessionId: "parent-id",
 	model: "claude-sonnet-4-20250514",
 	source: "web",
 });
 
 // Get session metadata (null if not found)
-const session = manager.get(sessionId);
+const session = await manager.get(sessionId);
 
 // List all sessions (ordered by updated_at DESC)
-const sessions = manager.list();
+const sessions = await manager.list();
 
 // Rename
-manager.rename(sessionId, "New Name");
+await manager.rename(sessionId, "New Name");
 
 // Delete (clears messages too)
-manager.delete(sessionId);
+await manager.delete(sessionId);
 ```
 
 </TypeScriptExample>
@@ -518,16 +526,16 @@ await manager.upsert(sessionId, message, parentId);
 await manager.appendAll(sessionId, messages, parentId);
 
 // Read history
-const history = manager.getHistory(sessionId, leafId);
+const history = await manager.getHistory(sessionId, leafId);
 
 // Message count
-const count = manager.getMessageCount(sessionId);
+const count = await manager.getMessageCount(sessionId);
 
 // Clear messages
-manager.clearMessages(sessionId);
+await manager.clearMessages(sessionId);
 
 // Delete specific messages
-manager.deleteMessages(sessionId, ["msg-1"]);
+await manager.deleteMessages(sessionId, ["msg-1"]);
 ```
 
 </TypeScriptExample>
@@ -545,12 +553,35 @@ const forked = await manager.fork(sessionId, atMessageId, "Forked Chat");
 
 </TypeScriptExample>
 
+### Compaction helpers
+
+<TypeScriptExample>
+
+```ts
+// Add a compaction overlay
+await manager.addCompaction(sessionId, summary, fromId, toId);
+
+// Get overlays
+const compactions = await manager.getCompactions(sessionId);
+
+// Compact and split — marks old session as ended, creates a continuation
+const continuation = await manager.compactAndSplit(
+	sessionId,
+	summary,
+	"Continued Chat",
+);
+```
+
+</TypeScriptExample>
+
+`compactAndSplit()` creates a new session with a summary message instead of an in-place overlay. The original session is marked with `end_reason: "compaction"`.
+
 ### Usage tracking
 
 <TypeScriptExample>
 
 ```ts
-manager.addUsage(sessionId, inputTokens, outputTokens, cost);
+await manager.addUsage(sessionId, inputTokens, outputTokens, cost);
 ```
 
 </TypeScriptExample>
@@ -561,10 +592,10 @@ manager.addUsage(sessionId, inputTokens, outputTokens, cost);
 
 ```ts
 // Search across all sessions (FTS5)
-const results = manager.search("deployment Friday", { limit: 20 });
+const results = await manager.search("deployment Friday", { limit: 20 });
 
 // Get tools for the model (includes session_search)
-const tools = manager.tools();
+const tools = await manager.tools();
 ```
 
 </TypeScriptExample>
@@ -591,7 +622,8 @@ const myWritable: WritableContextProvider = {
 const mySkills: SkillProvider = {
 	get: async () => "- api-ref: API Reference\n- guide: User Guide",
 	load: async (key) => fetchDocument(key),
-	set: async (key, content, description) => saveDocument(key, content, description),
+	set: async (key, content, description) =>
+		saveDocument(key, content, description),
 };
 
 // Search provider (enables search_context tool)
@@ -610,35 +642,217 @@ You can also implement `SessionProvider` to replace the SQLite storage entirely:
 
 ```ts
 const myStorage: SessionProvider = {
-	getMessage(id) { /* ... */ },
-	getHistory(leafId?) { /* ... */ },
-	getLatestLeaf() { /* ... */ },
-	getBranches(messageId) { /* ... */ },
-	getPathLength(leafId?) { /* ... */ },
-	appendMessage(message, parentId?) { /* ... */ },
-	updateMessage(message) { /* ... */ },
-	deleteMessages(messageIds) { /* ... */ },
-	clearMessages() { /* ... */ },
-	addCompaction(summary, fromId, toId) { /* ... */ },
-	getCompactions() { /* ... */ },
-	searchMessages(query, limit) { /* ... */ },
+	async getMessage(id) {
+		/* ... */
+	},
+	async getHistory(leafId?) {
+		/* ... */
+	},
+	async getLatestLeaf() {
+		/* ... */
+	},
+	async getBranches(messageId) {
+		/* ... */
+	},
+	async getPathLength(leafId?) {
+		/* ... */
+	},
+	async appendMessage(message, parentId?) {
+		/* ... */
+	},
+	async updateMessage(message) {
+		/* ... */
+	},
+	async deleteMessages(messageIds) {
+		/* ... */
+	},
+	async clearMessages() {
+		/* ... */
+	},
+	async addCompaction(summary, fromId, toId) {
+		/* ... */
+	},
+	async getCompactions() {
+		/* ... */
+	},
+	async searchMessages(query, limit) {
+		/* ... */
+	},
 };
 ```
 
 </TypeScriptExample>
 
+## Postgres providers
+
+By default, Session storage uses Durable Object SQLite and creates tables lazily. If you need session data in an external Postgres database for cross-agent queries, analytics, or shared storage, use `PostgresSessionProvider`, `PostgresContextProvider`, and `PostgresSearchProvider`.
+
+These providers work with Postgres-compatible databases through [Hyperdrive](/hyperdrive/) for connection pooling.
+
+### 1. Create a Hyperdrive config
+
+Create a Hyperdrive config for your Postgres database:
+
+```sh
+npx wrangler hyperdrive create my-session-db \
+	--connection-string="postgresql://user:password@host:port/dbname"
+```
+
+Then add the Hyperdrive binding to `wrangler.jsonc`:
+
+<WranglerConfig>
+
+```toml
+compatibility_flags = ["nodejs_compat"]
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "<your-hyperdrive-id>"
+
+[placement]
+mode = "smart"
+```
+
+</WranglerConfig>
+
+If you know your database region, configure placement close to the database to reduce query latency.
+
+### 2. Create the tables
+
+The Postgres user may not have permission to create tables at runtime. Run the schema once in your database console:
+
+```sql
+CREATE TABLE IF NOT EXISTS assistant_messages (
+	id TEXT NOT NULL,
+	session_id TEXT NOT NULL DEFAULT '',
+	parent_id TEXT,
+	role TEXT NOT NULL,
+	content TEXT NOT NULL,
+	text_content TEXT NOT NULL DEFAULT '',
+	created_at TIMESTAMPTZ DEFAULT NOW(),
+	content_tsv TSVECTOR GENERATED ALWAYS AS (to_tsvector('english', text_content)) STORED,
+	PRIMARY KEY (session_id, id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_assistant_msg_parent
+	ON assistant_messages (parent_id);
+CREATE INDEX IF NOT EXISTS idx_assistant_msg_session
+	ON assistant_messages (session_id);
+CREATE INDEX IF NOT EXISTS idx_assistant_msg_fts
+	ON assistant_messages USING GIN (content_tsv);
+
+CREATE TABLE IF NOT EXISTS assistant_compactions (
+	id TEXT PRIMARY KEY,
+	session_id TEXT NOT NULL DEFAULT '',
+	summary TEXT NOT NULL,
+	from_message_id TEXT NOT NULL,
+	to_message_id TEXT NOT NULL,
+	created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cf_agents_context_blocks (
+	label TEXT PRIMARY KEY,
+	content TEXT NOT NULL,
+	updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cf_agents_search_entries (
+	label TEXT NOT NULL,
+	key TEXT NOT NULL,
+	content TEXT NOT NULL,
+	content_tsv TSVECTOR GENERATED ALWAYS AS (to_tsvector('english', content)) STORED,
+	created_at TIMESTAMPTZ DEFAULT NOW(),
+	updated_at TIMESTAMPTZ DEFAULT NOW(),
+	PRIMARY KEY (label, key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_entries_fts
+	ON cf_agents_search_entries USING GIN (content_tsv);
+```
+
+### 3. Wire it up
+
+Install `pg`, then create a client from the Hyperdrive connection string and pass it to the Postgres providers:
+
+<PackageManagers pkg="pg" />
+
+<TypeScriptExample>
+
+```ts
+import { Agent } from "agents";
+import {
+	PostgresContextProvider,
+	PostgresSearchProvider,
+	PostgresSessionProvider,
+	Session,
+} from "agents/experimental/memory/session";
+import { Client } from "pg";
+
+export class MyAgent extends Agent<Env> {
+	private session?: Session;
+	private pgClient?: Client;
+
+	async onStart(): Promise<void> {
+		const client = new Client({
+			connectionString: this.env.HYPERDRIVE.connectionString,
+		});
+		await client.connect();
+		this.pgClient = client;
+
+		const sessionId = this.ctx.id.toString();
+		this.session = Session.create(
+			new PostgresSessionProvider(client, sessionId),
+		)
+			.withContext("soul", {
+				provider: {
+					get: async () => "You are a helpful assistant.",
+				},
+			})
+			.withContext("memory", {
+				description: "Short facts",
+				maxTokens: 1100,
+				provider: new PostgresContextProvider(client, `memory_${sessionId}`),
+			})
+			.withContext("knowledge", {
+				description: "Searchable knowledge base",
+				provider: new PostgresSearchProvider(client),
+			})
+			.withCachedPrompt(
+				new PostgresContextProvider(client, `_prompt_${sessionId}`),
+			);
+	}
+}
+```
+
+</TypeScriptExample>
+
+### Behavior differences
+
+When `Session.create()` receives a `SessionProvider` instead of a SQLite-backed provider, it skips SQLite auto-wiring:
+
+- **Context blocks need explicit providers.** Each `withContext()` call that should persist data needs a `provider` option.
+- **`withCachedPrompt()` needs an explicit provider.** Pass a `PostgresContextProvider` to persist the frozen system prompt.
+- **Session methods are async.** Use `await` for reads and writes so the same code works with local SQLite and external storage.
+- **Broadcaster support is skipped.** WebSocket status broadcasts for Session events only work with SQLite-backed sessions.
+
+### System prompt lifecycle
+
+`freezeSystemPrompt()` returns the cached prompt from storage. On first call, it loads context blocks from providers, renders the prompt, and persists it. Subsequent calls return the stored value without re-rendering.
+
+Use `refreshSystemPrompt()` to force reload context blocks, re-render the prompt, and update the stored value.
+
 ## Storage tables
 
-All storage is in Durable Object SQLite. Tables are created lazily on first use.
+By default, storage is in Durable Object SQLite and tables are created lazily on first use. Postgres-backed sessions use the external tables shown in the Postgres providers section.
 
-| Table | Purpose |
-| ----- | ------- |
-| `assistant_messages` | Tree-structured messages with `id`, `session_id`, `parent_id`, `role`, `content` (JSON), `created_at` |
-| `assistant_compactions` | Compaction overlays with `summary`, `from_message_id`, `to_message_id` |
-| `assistant_fts` | FTS5 virtual table for message search (porter stemming, unicode tokenization) |
-| `assistant_sessions` | Session registry (SessionManager only) with `name`, `parent_session_id`, `model`, `source`, token/cost counters |
-| `cf_agents_context_blocks` | Persistent context block storage (`AgentContextProvider`) |
-| `cf_agents_search_entries` / `cf_agents_search_fts` | Searchable context entries and FTS5 index (`AgentSearchProvider`) |
+| Table                                               | Purpose                                                                                                         |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `assistant_messages`                                | Tree-structured messages with `id`, `session_id`, `parent_id`, `role`, `content` (JSON), `created_at`           |
+| `assistant_compactions`                             | Compaction overlays with `summary`, `from_message_id`, `to_message_id`                                          |
+| `assistant_fts`                                     | FTS5 virtual table for message search (porter stemming, unicode tokenization)                                   |
+| `assistant_sessions`                                | Session registry (SessionManager only) with `name`, `parent_session_id`, `model`, `source`, token/cost counters |
+| `cf_agents_context_blocks`                          | Persistent context block storage (`AgentContextProvider`)                                                       |
+| `cf_agents_search_entries` / `cf_agents_search_fts` | Searchable context entries and FTS5 index (`AgentSearchProvider`)                                               |
 
 ## Acknowledgments
 
