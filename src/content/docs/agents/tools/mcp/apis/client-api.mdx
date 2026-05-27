@@ -9,7 +9,7 @@ sidebar:
 
 import { Render, TypeScriptExample, LinkCard } from "~/components";
 
-Connect your agent to external [Model Context Protocol (MCP)](/agents/mcp/) servers to use their tools, resources, and prompts. This enables your agent to interact with GitHub, Slack, databases, and other services through a standardized protocol.
+Connect your agent to external [Model Context Protocol (MCP)](/agents/tools/mcp/) servers to use their tools, resources, and prompts. This enables your agent to interact with GitHub, Slack, databases, and other services through a standardized protocol.
 
 ## Overview
 
@@ -22,7 +22,7 @@ The MCP client capability lets your agent:
 
 :::note
 
-This page covers connecting to MCP servers as a client. To create your own MCP server, refer to [Creating MCP servers](/agents/mcp/apis/agent-api/).
+This page covers connecting to MCP servers as a client. To create your own MCP server, refer to [Creating MCP servers](/agents/tools/mcp/apis/agent-api/).
 
 :::
 
@@ -133,7 +133,7 @@ MCP server URLs are validated before connection to prevent Server-Side Request F
 
 Loopback addresses (`localhost`, `127.x.x.x`, `[::1]`) are **allowed** for local development.
 
-For production connections to internal services, use the [RPC transport](/agents/mcp/protocol/transport/) with a Durable Object binding instead of HTTP.
+For production connections to internal services, use the [RPC transport](/agents/tools/mcp/protocol/transport/) with a Durable Object binding instead of HTTP.
 
 ### Return value
 
@@ -525,7 +525,7 @@ async addMcpServer(
   - `client` — MCP client configuration options
   - `retry` — Retry options for the connection
 
-RPC transport connects your Agent directly to an `McpAgent` via Durable Object bindings without HTTP overhead. Refer to [MCP Transport](/agents/mcp/protocol/transport/) for details on configuring RPC transport.
+RPC transport connects your Agent directly to an `McpAgent` via Durable Object bindings without HTTP overhead. Refer to [MCP Transport](/agents/tools/mcp/protocol/transport/) for details on configuring RPC transport.
 
 #### Returns
 
@@ -941,7 +941,7 @@ export class MyAgent extends Agent {
 
 <LinkCard
 	title="Creating MCP servers"
-	href="/agents/mcp/apis/agent-api/"
+	href="/agents/tools/mcp/apis/agent-api/"
 	description="Build your own MCP server."
 />
 

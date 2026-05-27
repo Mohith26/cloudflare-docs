@@ -9,10 +9,10 @@ sidebar:
 
 import { Details, Render, PackageManagers, LinkCard } from "~/components";
 
-This guide will show you how to deploy your own remote MCP server on Cloudflare using [Streamable HTTP transport](/agents/mcp/protocol/transport/), the current MCP specification standard. You have two options:
+This guide will show you how to deploy your own remote MCP server on Cloudflare using [Streamable HTTP transport](/agents/tools/mcp/protocol/transport/), the current MCP specification standard. You have two options:
 
 - **Without authentication** — anyone can connect and use the server (no login required).
-- **With [authentication and authorization](/agents/mcp/guides/remote-mcp-server/#add-authentication)** — users sign in before accessing tools, and you can control which tools an agent can call based on the user's permissions.
+- **With [authentication and authorization](/agents/tools/mcp/guides/remote-mcp-server/#add-authentication)** — users sign in before accessing tools, and you can control which tools an agent can call based on the user's permissions.
 
 ## Choosing an approach
 
@@ -20,8 +20,8 @@ The Agents SDK provides multiple ways to create MCP servers. Choose the approach
 
 | Approach                                                       | Stateful? | Requires Durable Objects? | Best for                                       |
 | -------------------------------------------------------------- | --------- | ------------------------- | ---------------------------------------------- |
-| [`createMcpHandler()`](/agents/mcp/apis/handler-api/) | No        | No                        | Stateless tools, simplest setup                |
-| [`McpAgent`](/agents/mcp/apis/agent-api/)             | Yes       | Yes                       | Stateful tools, per-session state, elicitation |
+| [`createMcpHandler()`](/agents/tools/mcp/apis/handler-api/) | No        | No                        | Stateless tools, simplest setup                |
+| [`McpAgent`](/agents/tools/mcp/apis/agent-api/)             | Yes       | Yes                       | Stateful tools, per-session state, elicitation |
 | Raw `WebStandardStreamableHTTPServerTransport`                 | No        | No                        | Full control, no SDK dependency                |
 
 - **`createMcpHandler()`** is the fastest way to get a stateless MCP server running. Use it when your tools do not need per-session state.
@@ -30,7 +30,7 @@ The Agents SDK provides multiple ways to create MCP servers. Choose the approach
 
 ## Deploy your first MCP server
 
-You can start by deploying a [public MCP server](https://github.com/cloudflare/ai/tree/main/demos/remote-mcp-authless) without authentication, then add user authentication and scoped authorization later. If you already know your server will require authentication, you can skip ahead to the [next section](/agents/mcp/guides/remote-mcp-server/#add-authentication).
+You can start by deploying a [public MCP server](https://github.com/cloudflare/ai/tree/main/demos/remote-mcp-authless) without authentication, then add user authentication and scoped authorization later. If you already know your server will require authentication, you can skip ahead to the [next section](/agents/tools/mcp/guides/remote-mcp-server/#add-authentication).
 
 ### Via the dashboard
 
@@ -38,9 +38,9 @@ The button below will guide you through everything you need to do to deploy an [
 
 [![Deploy to Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/ai/tree/main/demos/remote-mcp-authless)
 
-Once deployed, this server will be live at your `workers.dev` subdomain (for example, `remote-mcp-server-authless.your-account.workers.dev/mcp`). You can connect to it immediately using the [AI Playground](https://playground.ai.cloudflare.com/) (a remote MCP client), [MCP inspector](https://github.com/modelcontextprotocol/inspector) or [other MCP clients](/agents/mcp/guides/remote-mcp-server/#connect-from-an-mcp-client-via-a-local-proxy).
+Once deployed, this server will be live at your `workers.dev` subdomain (for example, `remote-mcp-server-authless.your-account.workers.dev/mcp`). You can connect to it immediately using the [AI Playground](https://playground.ai.cloudflare.com/) (a remote MCP client), [MCP inspector](https://github.com/modelcontextprotocol/inspector) or [other MCP clients](/agents/tools/mcp/guides/remote-mcp-server/#connect-from-an-mcp-client-via-a-local-proxy).
 
-A new git repository will be set up on your GitHub or GitLab account for your MCP server, configured to automatically deploy to Cloudflare each time you push a change or merge a pull request to the main branch of the repository. You can clone this repository, [develop locally](/agents/mcp/guides/remote-mcp-server/#via-the-cli), and start customizing the MCP server with your own [tools](/agents/mcp/protocol/tools/).
+A new git repository will be set up on your GitHub or GitLab account for your MCP server, configured to automatically deploy to Cloudflare each time you push a change or merge a pull request to the main branch of the repository. You can clone this repository, [develop locally](/agents/tools/mcp/guides/remote-mcp-server/#via-the-cli), and start customizing the MCP server with your own [tools](/agents/tools/mcp/protocol/tools/).
 
 ### Via the CLI
 
@@ -147,7 +147,7 @@ For example, to connect from Claude Desktop:
 
    Claude should invoke the tool and show the result generated by the remote MCP server.
 
-To learn how to use remote MCP servers with other MCP clients, refer to [Test a Remote MCP Server](/agents/mcp/guides/test-remote-mcp-server/).
+To learn how to use remote MCP servers with other MCP clients, refer to [Test a Remote MCP Server](/agents/tools/mcp/guides/test-remote-mcp-server/).
 
 ## Add Authentication
 
@@ -161,7 +161,7 @@ For a step-by-step deployment guide, refer to [Secure MCP servers with Access fo
 
 ### Third-party OAuth
 
-You can connect your MCP server with any [OAuth provider](/agents/mcp/protocol/authorization/#2-third-party-oauth-provider) that supports the OAuth 2.0 specification, including GitHub, Google, Slack, [Stytch](/agents/mcp/protocol/authorization/#stytch), [Auth0](/agents/mcp/protocol/authorization/#auth0), [WorkOS](/agents/mcp/protocol/authorization/#workos), and more.
+You can connect your MCP server with any [OAuth provider](/agents/tools/mcp/protocol/authorization/#2-third-party-oauth-provider) that supports the OAuth 2.0 specification, including GitHub, Google, Slack, [Stytch](/agents/tools/mcp/protocol/authorization/#stytch), [Auth0](/agents/tools/mcp/protocol/authorization/#auth0), [WorkOS](/agents/tools/mcp/protocol/authorization/#workos), and more.
 
 The following example demonstrates how to use GitHub as an OAuth provider.
 
@@ -303,18 +303,18 @@ npx wrangler secret put GITHUB_CLIENT_SECRET
     npm run deploy
     ```
 
-5.  Connect to your server running at `worker-name.account-name.workers.dev/mcp` using the [AI Playground](https://playground.ai.cloudflare.com/), MCP Inspector, or [other MCP clients](/agents/mcp/guides/test-remote-mcp-server/), and authenticate with GitHub.
+5.  Connect to your server running at `worker-name.account-name.workers.dev/mcp` using the [AI Playground](https://playground.ai.cloudflare.com/), MCP Inspector, or [other MCP clients](/agents/tools/mcp/guides/test-remote-mcp-server/), and authenticate with GitHub.
 
 ## Next steps
 
 <LinkCard
 	title="MCP Tools"
-	href="/agents/mcp/protocol/tools/"
+	href="/agents/tools/mcp/protocol/tools/"
 	description="Add tools to your MCP server."
 />
 
 <LinkCard
 	title="Authorization"
-	href="/agents/mcp/protocol/authorization/"
+	href="/agents/tools/mcp/protocol/authorization/"
 	description="Customize authentication and authorization."
 />
