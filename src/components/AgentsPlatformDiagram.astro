@@ -35,15 +35,12 @@ const tools = [
 
 		<section class="resource-card inbound-card" aria-label="Communication channels">
 			<header class="card-header">
-				<div class="card-title">Communication channels</div>
+				<div class="card-title">Channels</div>
 				<span class="count-badge">{channels.length}</span>
 			</header>
 			<div class="pill-stack">
 				{channels.map((item) => (
-					<a class="binding-pill" href={item.href}>
-						<span class="type-badge">{item.type}</span>
-						<span class="binding-name">{item.name}</span>
-					</a>
+					<a class="binding-pill" href={item.href}>{item.type}</a>
 				))}
 			</div>
 		</section>
@@ -87,10 +84,7 @@ const tools = [
 			</header>
 			<div class="pill-stack">
 				{tools.map((item) => (
-					<a class="binding-pill" href={item.href}>
-						<span class="type-badge">{item.type}</span>
-						<span class="binding-name">{item.name}</span>
-					</a>
+					<a class="binding-pill" href={item.href}>{item.type}</a>
 				))}
 			</div>
 		</section>
@@ -250,15 +244,19 @@ const tools = [
 	.binding-pill {
 		display: flex;
 		align-items: center;
-		gap: 6px;
 		height: 30px;
 		min-width: 0;
-		padding-right: 8px;
+		padding: 0 12px;
 		overflow: hidden;
 		border: 1px solid var(--map-line);
-		border-radius: 9999px;
+		border-radius: 8px;
 		background: var(--map-card);
 		box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+		color: var(--map-text);
+		font-size: 12px;
+		font-weight: 500;
+		white-space: nowrap;
+		text-overflow: ellipsis;
 		transition:
 			background-color 150ms ease,
 			border-color 150ms ease,
@@ -269,30 +267,6 @@ const tools = [
 		background: var(--map-overlay);
 		border-color: color-mix(in srgb, var(--map-brand) 50%, var(--map-line));
 		transform: translateY(-1px);
-	}
-
-	.type-badge {
-		display: inline-flex;
-		flex: none;
-		align-items: center;
-		height: 30px;
-		padding: 0 7px;
-		border: 1px solid var(--map-blue-ring);
-		border-radius: 9999px;
-		background: var(--map-blue-bg);
-		color: var(--map-blue-text);
-		font-size: 12px;
-		font-weight: 500;
-	}
-
-	.binding-name {
-		min-width: 0;
-		overflow: hidden;
-		color: var(--map-text);
-		font-family: "Paper Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-		font-size: 12px;
-		text-overflow: ellipsis;
-		white-space: nowrap;
 	}
 
 	.agent-card {
@@ -372,7 +346,7 @@ const tools = [
 		place-items: center;
 		min-height: 28px;
 		border: 1px solid var(--map-line);
-		border-radius: 9999px;
+		border-radius: 8px;
 		background: var(--map-elevated);
 		color: var(--map-text);
 		font-size: 12px;
@@ -404,7 +378,7 @@ const tools = [
 		margin-bottom: 8px;
 		padding: 10px 14px;
 		border: 1px solid var(--map-line);
-		border-radius: 9999px;
+		border-radius: 8px;
 		background: var(--map-card);
 		box-shadow: 0 5px 14px rgb(0 0 0 / 7%);
 	}
