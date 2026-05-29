@@ -20,7 +20,7 @@ const tools = [
 	{ type: "Sandbox", name: "Bash/Shell", href: "/agents/tools/sandbox/" },
 	{ type: "MCP", name: "Servers", href: "/agents/mcp/" },
 	{ type: "Browser", name: "CDP", href: "/agents/tools/browser/" },
-	{ type: "AI Search", name: "Retrieval Augmented Generation (RAG)", href: "/agents/tools/rag/" },
+	{ type: "AI Search", name: "RAG", href: "/agents/tools/rag/" },
 	{ type: "Payments", name: "x402 · MPP", href: "/agents/tools/payments/" },
 ];
 ---
@@ -131,13 +131,13 @@ const tools = [
 	.architecture-map {
 		position: relative;
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(210px, 230px) minmax(0, 1fr);
+		grid-template-columns: minmax(0, 1fr) minmax(200px, 220px) minmax(0, 1fr);
 		grid-template-areas:
 			"inbound agent tools"
 			"observability observability observability";
 		align-items: center;
 		justify-content: center;
-		gap: 14px 28px;
+		gap: 14px 18px;
 		min-height: 320px;
 		width: 100%;
 		max-width: 100%;
@@ -252,7 +252,9 @@ const tools = [
 		align-items: center;
 		gap: 6px;
 		height: 30px;
-		padding-right: 10px;
+		min-width: 0;
+		padding-right: 8px;
+		overflow: hidden;
 		border: 1px solid var(--map-line);
 		border-radius: 9999px;
 		background: var(--map-card);
@@ -271,9 +273,10 @@ const tools = [
 
 	.type-badge {
 		display: inline-flex;
+		flex: none;
 		align-items: center;
 		height: 30px;
-		padding: 0 8px;
+		padding: 0 7px;
 		border: 1px solid var(--map-blue-ring);
 		border-radius: 9999px;
 		background: var(--map-blue-bg);
@@ -283,6 +286,7 @@ const tools = [
 	}
 
 	.binding-name {
+		min-width: 0;
 		overflow: hidden;
 		color: var(--map-text);
 		font-family: "Paper Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
