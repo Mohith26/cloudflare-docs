@@ -256,7 +256,7 @@
 /agents/api-reference/using-ai-models/ /agents/runtime/operations/using-ai-models/ 301
 /agents/api-reference/voice/ /agents/communication-channels/voice/ 301
 /agents/api-reference/websockets/ /agents/runtime/communication/websockets/ 301
-/agents/guides/anthropic-agent-patterns/ /agents/concepts/anthropic-agent-patterns/ 301
+/agents/guides/anthropic-agent-patterns/ /agents/concepts/agentic-patterns/ 301
 /agents/guides/autonomous-responses/ /agents/communication-channels/chat/autonomous-responses/ 301
 /agents/guides/build-a-voice-agent/ /agents/examples/voice-agent/ 301
 /agents/guides/build-mcp-client/ /agents/model-context-protocol/guides/build-mcp-client/ 301
@@ -292,7 +292,7 @@
 /agents/channels/chat/chat-agents/ /agents/communication-channels/chat/chat-agents/ 301
 /agents/channels/chat/client-sdk/ /agents/communication-channels/chat/client-sdk/ 301
 /agents/channels/chat/autonomous-responses/ /agents/communication-channels/chat/autonomous-responses/ 301
-/agents/channels/chat/chatgpt-app/ /agents/communication-channels/chat/chatgpt-app/ 301
+/agents/channels/chat/chatgpt-app/ /workers/demos/chatgpt-app/ 301
 /agents/channels/voice/ /agents/communication-channels/voice/ 301
 /agents/channels/voice/build-a-voice-agent/ /agents/examples/voice-agent/ 301
 /agents/channels/email/ /agents/communication-channels/email/ 301
