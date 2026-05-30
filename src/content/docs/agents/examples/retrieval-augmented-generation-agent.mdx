@@ -1,7 +1,7 @@
 ---
-title: Document agent
+title: Retrieval Augmented Generation agent
 pcx_content_type: example
-description: Build a document agent that uses Retrieval Augmented Generation with AI Search and durable execution for long-running document workflows.
+description: Build an agent that uses Retrieval Augmented Generation with AI Search and durable execution for long-running document workflows.
 sidebar:
   order: 6
 ---
@@ -14,7 +14,7 @@ import {
 	WranglerConfig,
 } from "~/components";
 
-Build a document agent that uses Retrieval Augmented Generation (RAG) to retrieve relevant information and augment [calls to AI models](/agents/runtime/operations/using-ai-models/). Store a user's chat history to use as context for future conversations, summarize documents to bootstrap an Agent's knowledge base, and/or use data from your Agent's [browser](/agents/tools/browser/) tasks to enhance your Agent's capabilities.
+Build an agent that uses Retrieval Augmented Generation (RAG) to retrieve relevant information and augment [calls to AI models](/agents/runtime/operations/using-ai-models/). Store a user's chat history to use as context for future conversations, summarize documents to bootstrap an Agent's knowledge base, and/or use data from your Agent's [browser](/agents/tools/browser/) tasks to enhance your Agent's capabilities.
 
 For long-running document ingestion, indexing, or background research tasks, pair RAG with [durable execution with fibers](/agents/runtime/execution/durable-execution/). Fibers let the agent checkpoint progress with `stash()` and recover work with `onFiberRecovered()` if the Durable Object is evicted mid-task.
 
