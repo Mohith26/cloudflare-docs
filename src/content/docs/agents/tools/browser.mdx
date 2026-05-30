@@ -8,7 +8,7 @@ products:
   - agents
 ---
 
-import { InlineBadge, LinkCard } from "~/components";
+import { InlineBadge, LinkCard, TypeScriptExample, WranglerConfig } from "~/components";
 
 Agents can use [Browser Run](/browser-run/) to inspect and interact with web pages through the [Chrome DevTools Protocol (CDP)](/browser-run/cdp/). <InlineBadge preset="beta" /> Browser tools are useful when an agent needs to understand rendered pages, capture screenshots, debug frontend behavior, or extract information that is only available after JavaScript runs.
 
@@ -25,6 +25,70 @@ Use browser tools when you want an agent to:
 Browser Run provides isolated browser sessions that agents can control with CDP. The agent can navigate pages, evaluate JavaScript, read DOM state, capture screenshots, and inspect network or console output.
 
 Because browser sessions run outside the Worker isolate, use them for work that needs a real browser environment rather than lightweight HTTP fetches.
+
+## Basic pattern
+
+Create browser tools with the Browser Run and Worker Loader bindings, then pass those tools to your model call.
+
+<TypeScriptExample>
+
+```ts
+import { AIChatAgent } from "@cloudflare/ai-chat";
+import { createBrowserTools } from "agents/browser/ai";
+import { streamText, convertToModelMessages, stepCountIs } from "ai";
+import { createWorkersAI } from "workers-ai-provider";
+
+export class BrowserAgent extends AIChatAgent<Env> {
+	async onChatMessage() {
+		const workersai = createWorkersAI({ binding: this.env.AI });
+		const browserTools = createBrowserTools({
+			browser: this.env.BROWSER,
+			loader: this.env.LOADER,
+		});
+
+		const result = streamText({
+			model: workersai("@cf/zai-org/glm-4.7-flash"),
+			system: "You can inspect web pages with browser tools.",
+			messages: await convertToModelMessages(this.messages),
+			tools: browserTools,
+			stopWhen: stepCountIs(10),
+		});
+
+		return result.toUIMessageStreamResponse();
+	}
+}
+```
+
+</TypeScriptExample>
+
+Browser tools expose two capabilities:
+
+| Tool | Description |
+| --- | --- |
+| `browser_search` | Query the CDP specification to discover commands, events, and types. |
+| `browser_execute` | Run CDP commands against a live browser session. |
+
+## Configuration
+
+Add the Browser Run and Worker Loader bindings to `wrangler.jsonc`.
+
+<WranglerConfig>
+
+```jsonc
+{
+	"compatibility_flags": ["nodejs_compat"],
+	"browser": {
+		"binding": "BROWSER"
+	},
+	"worker_loaders": [
+		{
+			"binding": "LOADER"
+		}
+	]
+}
+```
+
+</WranglerConfig>
 
 ## Build a browser agent
 

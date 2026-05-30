@@ -1,0 +1,89 @@
+---
+title: MCP
+pcx_content_type: concept
+description: Give agents tools from Model Context Protocol servers, or expose agent capabilities as MCP tools.
+sidebar:
+  order: 2
+products:
+  - agents
+---
+
+import { LinkCard, TypeScriptExample, WranglerConfig } from "~/components";
+
+Agents can use [Model Context Protocol (MCP)](/agents/model-context-protocol/) to call external tools, services, and data sources through a standard protocol. You can connect an agent to remote MCP servers, or expose an agent's own capabilities as MCP tools for other MCP clients.
+
+Use MCP when you want an agent to:
+
+- Call tools exposed by remote MCP servers.
+- Standardize tool definitions across agents, IDEs, and other AI clients.
+- Expose agent capabilities to MCP clients.
+- Add authentication and authorization around tool access.
+
+## Basic pattern
+
+Create a stateful MCP server by extending `McpAgent`, registering tools in `init()`, and exporting the Worker handler with `McpAgent.serve()`.
+
+<TypeScriptExample>
+
+```ts
+import { McpAgent } from "agents/mcp";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+
+export class MyMCP extends McpAgent {
+	server = new McpServer({ name: "my-server", version: "1.0.0" });
+
+	async init() {
+		this.server.tool("add", { a: z.number(), b: z.number() }, async ({ a, b }) => ({
+			content: [{ type: "text", text: String(a + b) }],
+		}));
+	}
+}
+
+export default MyMCP.serve("/mcp");
+```
+
+</TypeScriptExample>
+
+For stateless tools, use [`createMcpHandler()`](/agents/model-context-protocol/apis/handler-api/). For stateful servers with per-session state, use [`McpAgent`](/agents/model-context-protocol/apis/agent-api/).
+
+## Configuration
+
+Stateful MCP servers use Durable Objects. Add a Durable Object binding and migration for your `McpAgent` class.
+
+<WranglerConfig>
+
+```jsonc
+{
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "MCP_OBJECT",
+				"class_name": "MyMCP"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["MyMCP"]
+		}
+	]
+}
+```
+
+</WranglerConfig>
+
+## Related resources
+
+<LinkCard
+	title="Model Context Protocol (MCP)"
+	href="/agents/model-context-protocol/"
+	description="Build MCP clients and servers, expose tools, and connect agents to external capabilities."
+/>
+
+<LinkCard
+	title="Build a remote MCP server"
+	href="/agents/model-context-protocol/guides/remote-mcp-server/"
+	description="Deploy a remote MCP server on Cloudflare with optional authentication."
+/>

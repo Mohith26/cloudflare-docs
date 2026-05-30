@@ -1,6 +1,6 @@
 ---
-title: Retrieval Augmented Generation (RAG)
-description: Add RAG to Cloudflare Agents using Vectorize for vector search and the embedded SQL database for context retrieval.
+title: Retrieval Augmented Generation (with AI Search)
+description: Add Retrieval Augmented Generation to Cloudflare Agents using AI Search, Vectorize, and the embedded SQL database for context retrieval.
 pcx_content_type: concept
 sidebar:
   order: 4
@@ -16,7 +16,7 @@ import {
 	WranglerConfig,
 } from "~/components";
 
-Agents can use Retrieval Augmented Generation (RAG) to retrieve relevant information and use it augment [calls to AI models](/agents/runtime/operations/using-ai-models/). Store a user's chat history to use as context for future conversations, summarize documents to bootstrap an Agent's knowledge base, and/or use data from your Agent's [web browsing](/agents/tools/browser/) tasks to enhance your Agent's capabilities.
+Agents can use Retrieval Augmented Generation (RAG) with [AI Search](/ai-search/) to retrieve relevant information and use it to augment [calls to AI models](/agents/runtime/operations/using-ai-models/). Store a user's chat history to use as context for future conversations, summarize documents to bootstrap an Agent's knowledge base, and/or use data from your Agent's [web browsing](/agents/tools/browser/) tasks to enhance your Agent's capabilities.
 
 You can use the Agent's own [SQL database](/agents/runtime/lifecycle/state/) as the source of truth for your data and store embeddings in [Vectorize](/vectorize/) (or any other vector-enabled database) to allow your Agent to retrieve relevant information.
 
