@@ -18,7 +18,7 @@ These MCP servers allow your MCP client to read configurations from your account
 
 The [Cloudflare API MCP server](https://github.com/cloudflare/mcp) provides access to the entire [Cloudflare API](/api/) — over 2,500 endpoints across DNS, Workers, R2, Zero Trust, and every other product — through just two tools: `search()` and `execute()`.
 
-It uses [Codemode](/agents/mcp/protocol/codemode/), a technique where the model writes JavaScript against a typed representation of the OpenAPI spec and the Cloudflare API client, rather than loading individual tool definitions for each endpoint. The generated code runs inside an isolated [Dynamic Worker](/workers/runtime-apis/bindings/worker-loader/) sandbox.
+It uses [Codemode](/agents/model-context-protocol/protocol/codemode/), a technique where the model writes JavaScript against a typed representation of the OpenAPI spec and the Cloudflare API client, rather than loading individual tool definitions for each endpoint. The generated code runs inside an isolated [Dynamic Worker](/workers/runtime-apis/bindings/worker-loader/) sandbox.
 
 This approach uses approximately 1,000 tokens regardless of how many API endpoints exist. An equivalent MCP server that exposed every endpoint as a native tool would consume over 1 million tokens — more than the entire context window of most foundation models.
 
@@ -108,69 +108,3 @@ In addition to the Cloudflare API MCP server, Cloudflare provides product-specif
 | [Agents SDK Documentation server](https://github.com/cloudflare/agents/tree/main/site/agents)                           | Token-efficient search of the Cloudflare Agents SDK documentation                               | `https://agents.cloudflare.com/mcp`            |
 
 Check the [GitHub page](https://github.com/cloudflare/mcp-server-cloudflare) to learn how to use Cloudflare's remote MCP servers with different MCP clients.
-
-## Cloudflare Community MCP server
-
-The [Cloudflare Community MCP server](https://community.cloudflare.com/.well-known/mcp.json) lets AI agents search the Cloudflare Community forum, read topics and posts, look up users, and filter public content. It is powered by [`@discourse/mcp`](https://www.npmjs.com/package/@discourse/mcp), the official Discourse MCP server.
-
-No API key is required to read public forum data. API keys are only required for write operations, such as posting or moderation.
-
-### Install
-
-```sh
-npx @discourse/mcp@latest
-```
-
-### Configure a local MCP client
-
-Add the Discourse server to your MCP client configuration. For example:
-
-```json
-{
-	"mcpServers": {
-		"discourse": {
-			"command": "npx",
-			"args": ["-y", "@discourse/mcp@latest"]
-		}
-	}
-}
-```
-
-For OpenCode, add the following inside the `"mcp"` block in `~/.config/opencode/opencode.jsonc`:
-
-```jsonc
-"discourse": {
-	"type": "local",
-	"command": ["npx", "-y", "@discourse/mcp@latest"],
-	"enabled": true
-}
-```
-
-After configuring your client, use the `discourse_select_site` tool with `https://community.cloudflare.com`.
-
-### Available tools
-
-| Tool                        | Description                                |
-| --------------------------- | ------------------------------------------ |
-| `discourse_select_site`     | Connect to `community.cloudflare.com`      |
-| `discourse_search`          | Full-text search across topics and posts   |
-| `discourse_filter_topics`   | Filter by category, tags, status, or dates |
-| `discourse_read_topic`      | Read a topic's posts and metadata          |
-| `discourse_read_post`       | Read a specific post                       |
-| `discourse_get_user`        | Look up a user's profile                   |
-| `discourse_list_user_posts` | List posts by a user                       |
-
-### Example prompts
-
-- Search the Cloudflare Community for topics about Error 522.
-- Find unanswered topics in the SSL category from the last three days.
-- Read topic 42325 and summarize the issue.
-- Show recent replies from a specific user.
-
-### Machine-readable discovery
-
-Agents can discover the Community MCP server through these endpoints on `community.cloudflare.com`:
-
-- [`/.well-known/mcp.json`](https://community.cloudflare.com/.well-known/mcp.json) — MCP Server Card
-- [`/llms.txt`](https://community.cloudflare.com/llms.txt) — `llms.txt` with server information and install instructions
-- [`/.well-known/agent.json`](https://community.cloudflare.com/.well-known/agent.json) — A2A Agent Card

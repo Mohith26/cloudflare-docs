@@ -37,7 +37,7 @@ To deploy an [example MCP server](https://github.com/cloudflare/ai/tree/main/dem
 
 ### (2) Third-party OAuth Provider
 
-The [OAuth Provider Library](https://github.com/cloudflare/workers-oauth-provider) can be configured to use a third-party OAuth provider, such as GitHub or Google. You can see a complete example of this in the [GitHub example](/agents/mcp/guides/remote-mcp-server/#add-authentication).
+The [OAuth Provider Library](https://github.com/cloudflare/workers-oauth-provider) can be configured to use a third-party OAuth provider, such as GitHub or Google. You can see a complete example of this in the [GitHub example](/agents/model-context-protocol/guides/remote-mcp-server/#add-authentication).
 
 When you use a third-party OAuth provider, you must provide a handler to the `OAuthProvider` that implements the OAuth flow for the third-party provider.
 
@@ -148,7 +148,7 @@ export default new OAuthProvider({
 });
 ```
 
-Refer to the [getting started example](/agents/mcp/guides/remote-mcp-server/) for a complete example of the `OAuthProvider` in use, with a mock authentication flow.
+Refer to the [getting started example](/agents/model-context-protocol/guides/remote-mcp-server/) for a complete example of the `OAuthProvider` in use, with a mock authentication flow.
 
 The authorization flow in this case works like this:
 
@@ -172,7 +172,7 @@ sequenceDiagram
     Note over C,M: Begin standard MCP message exchange
 ```
 
-Remember — [authentication is different from authorization](https://www.cloudflare.com/learning/access-management/authn-vs-authz/). Your MCP Server can handle authorization itself, while still relying on an external authentication service to first authenticate users. The [example](/agents/mcp/guides/remote-mcp-server/) in getting started provides a mock authentication flow. You will need to implement your own authentication handler — either handling authentication yourself, or using an external authentication services.
+Remember — [authentication is different from authorization](https://www.cloudflare.com/learning/access-management/authn-vs-authz/). Your MCP Server can handle authorization itself, while still relying on an external authentication service to first authenticate users. The [example](/agents/model-context-protocol/guides/remote-mcp-server/) in getting started provides a mock authentication flow. You will need to implement your own authentication handler — either handling authentication yourself, or using an external authentication services.
 
 ## Using authentication context in tools
 

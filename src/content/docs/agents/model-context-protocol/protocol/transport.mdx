@@ -18,14 +18,14 @@ The Model Context Protocol (MCP) specification defines two standard [transport m
 2. **Streamable HTTP** — The standard transport method for remote MCP connections, [introduced](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http) in March 2025. It uses a single HTTP endpoint for bidirectional messaging.
 
 :::note
-Server-Sent Events (SSE) was previously used for remote MCP connections but has been deprecated in favor of Streamable HTTP. If you need SSE support for legacy clients, use the [`McpAgent`](/agents/mcp/apis/agent-api/) class.
+Server-Sent Events (SSE) was previously used for remote MCP connections but has been deprecated in favor of Streamable HTTP. If you need SSE support for legacy clients, use the [`McpAgent`](/agents/model-context-protocol/apis/agent-api/) class.
 :::
 
-MCP servers built with the [Agents SDK](/agents) use [`createMcpHandler`](/agents/mcp/apis/handler-api/) to handle Streamable HTTP transport.
+MCP servers built with the [Agents SDK](/agents) use [`createMcpHandler`](/agents/model-context-protocol/apis/handler-api/) to handle Streamable HTTP transport.
 
 ## Implementing remote MCP transport
 
-Use [`createMcpHandler`](/agents/mcp/apis/handler-api/) to create an MCP server that handles Streamable HTTP transport. This is the recommended approach for new MCP servers.
+Use [`createMcpHandler`](/agents/model-context-protocol/apis/handler-api/) to create an MCP server that handles Streamable HTTP transport. This is the recommended approach for new MCP servers.
 
 #### Get started quickly
 
@@ -103,7 +103,7 @@ export default new OAuthProvider({
 
 If your MCP server needs to maintain state across requests, use `createMcpHandler` with a `WorkerTransport` inside an [Agent](/agents/) class. This allows you to persist session state in Durable Object storage and use advanced MCP features like [elicitation](https://modelcontextprotocol.io/specification/draft/client/elicitation) and [sampling](https://modelcontextprotocol.io/specification/draft/client/sampling).
 
-See [Stateful MCP Servers](/agents/mcp/apis/handler-api/#stateful-mcp-servers) for implementation details.
+See [Stateful MCP Servers](/agents/model-context-protocol/apis/handler-api/#stateful-mcp-servers) for implementation details.
 
 ## RPC transport
 
@@ -190,7 +190,7 @@ export class Chat extends AIChatAgent<Env> {
 
 RPC connections are automatically restored after Durable Object hibernation, just like HTTP connections. The binding name and props are persisted to storage so the connection can be re-established without any extra code.
 
-For RPC transport, if `addMcpServer` is called with a name that already has an active connection, the existing connection is returned instead of creating a duplicate. For HTTP transport, deduplication matches on both server name and URL (refer to [MCP Client API](/agents/mcp/apis/client-api/) for details). This makes it safe to call in `onStart()`.
+For RPC transport, if `addMcpServer` is called with a name that already has an active connection, the existing connection is returned instead of creating a duplicate. For HTTP transport, deduplication matches on both server name and URL (refer to [MCP Client API](/agents/model-context-protocol/apis/client-api/) for details). This makes it safe to call in `onStart()`.
 
 #### 3. Configure Durable Object bindings
 
@@ -329,11 +329,11 @@ export class MyMCP extends McpAgent<Env, State> {
 If you have an existing MCP server using the `McpAgent` class:
 
 - **Not using state?** Replace your `McpAgent` class with `McpServer` from `@modelcontextprotocol/sdk` and use `createMcpHandler(server)` in a Worker `fetch` handler.
-- **Using state?** Use `createMcpHandler` with a `WorkerTransport` inside an [Agent](/agents/) class. See [Stateful MCP Servers](/agents/mcp/apis/handler-api/#stateful-mcp-servers) for details.
-- **Need SSE support?** Continue using `McpAgent` with `serveSSE()` for legacy client compatibility. See the [McpAgent API reference](/agents/mcp/apis/agent-api/).
+- **Using state?** Use `createMcpHandler` with a `WorkerTransport` inside an [Agent](/agents/) class. See [Stateful MCP Servers](/agents/model-context-protocol/apis/handler-api/#stateful-mcp-servers) for details.
+- **Need SSE support?** Continue using `McpAgent` with `serveSSE()` for legacy client compatibility. See the [McpAgent API reference](/agents/model-context-protocol/apis/agent-api/).
 
 ### Testing with MCP clients
 
 You can test your MCP server using an MCP client that supports remote connections, or use [`mcp-remote`](https://www.npmjs.com/package/mcp-remote), an adapter that lets MCP clients that only support local connections work with remote MCP servers.
 
-Follow [this guide](/agents/mcp/guides/test-remote-mcp-server/) for instructions on how to connect to your remote MCP server to Claude Desktop, Cursor, Windsurf, and other MCP clients.
+Follow [this guide](/agents/model-context-protocol/guides/test-remote-mcp-server/) for instructions on how to connect to your remote MCP server to Claude Desktop, Cursor, Windsurf, and other MCP clients.

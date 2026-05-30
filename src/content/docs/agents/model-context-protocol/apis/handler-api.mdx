@@ -12,7 +12,7 @@ products:
 
 import { TypeScriptExample, LinkCard } from "~/components";
 
-The `createMcpHandler` function creates a fetch handler to serve your [MCP server](/agents/mcp/). Use it when you want a stateless MCP server that runs in a plain Worker (no Durable Object). For stateful MCP servers that persist state across requests, use the [`McpAgent`](/agents/mcp/apis/agent-api/) class instead.
+The `createMcpHandler` function creates a fetch handler to serve your [MCP server](/agents/model-context-protocol/). Use it when you want a stateless MCP server that runs in a plain Worker (no Durable Object). For stateful MCP servers that persist state across requests, use the [`McpAgent`](/agents/model-context-protocol/apis/agent-api/) class instead.
 
 It uses an implementation of the MCP Transport interface, `WorkerTransport`, built on top of web standards, which conforms to the [streamable-http](https://modelcontextprotocol.io/specification/draft/basic/transports/#streamable-http) transport specification.
 
@@ -89,9 +89,9 @@ const handler = createMcpHandler(server, {
 
 #### authContext
 
-An authentication context object that will be available to MCP tools via [`getMcpAuthContext()`](/agents/mcp/apis/handler-api/#authentication-context).
+An authentication context object that will be available to MCP tools via [`getMcpAuthContext()`](/agents/model-context-protocol/apis/handler-api/#authentication-context).
 
-When using the [`OAuthProvider`](/agents/mcp/protocol/authorization/) from `@cloudflare/workers-oauth-provider`, the authentication context is automatically populated with information from the OAuth flow. You typically don't need to set this manually.
+When using the [`OAuthProvider`](/agents/model-context-protocol/protocol/authorization/) from `@cloudflare/workers-oauth-provider`, the authentication context is automatically populated with information from the OAuth flow. You typically don't need to set this manually.
 
 #### transport
 
@@ -127,7 +127,7 @@ MCP SDK 1.26.0 introduces a guard that prevents connecting to a server instance 
 
 **If your stateless MCP server declares `McpServer` or transport instances in the global scope, you must create new instances per request.**
 
-See the [migration guide](/agents/mcp/apis/handler-api/#migration-guide-for-mcp-sdk-1260) below for details.
+See the [migration guide](/agents/model-context-protocol/apis/handler-api/#migration-guide-for-mcp-sdk-1260) below for details.
 :::
 
 <TypeScriptExample>
@@ -546,7 +546,7 @@ const transport = new WorkerTransport({
 
 ## Authentication Context
 
-When using [OAuth authentication](/agents/mcp/protocol/authorization/) with `createMcpHandler`, user information is made available to your MCP tools through `getMcpAuthContext()`. Under the hood this uses `AsyncLocalStorage` to pass the request to the tool handler, keeping the authentication context available.
+When using [OAuth authentication](/agents/model-context-protocol/protocol/authorization/) with `createMcpHandler`, user information is made available to your MCP tools through `getMcpAuthContext()`. Under the hood this uses `AsyncLocalStorage` to pass the request to the tool handler, keeping the authentication context available.
 
 ```ts
 interface McpAuthContext {
@@ -595,7 +595,7 @@ function createServer() {
 </TypeScriptExample>
 
 :::note
-For a complete guide on setting up OAuth authentication with MCP servers, see the [MCP Authorization documentation](/agents/mcp/protocol/authorization/). View the [complete authenticated MCP server in a Worker example on GitHub](https://github.com/cloudflare/agents/tree/main/examples/mcp-worker-authenticated).
+For a complete guide on setting up OAuth authentication with MCP servers, see the [MCP Authorization documentation](/agents/model-context-protocol/protocol/authorization/). View the [complete authenticated MCP server in a Worker example on GitHub](https://github.com/cloudflare/agents/tree/main/examples/mcp-worker-authenticated).
 :::
 
 ## Error Handling
@@ -631,24 +631,24 @@ server.tool("riskyOperation", "An operation that might fail", {}, async () => {
 
 <LinkCard
 	title="Building MCP Servers"
-	href="/agents/mcp/guides/remote-mcp-server/"
+	href="/agents/model-context-protocol/guides/remote-mcp-server/"
 	description="Build and deploy MCP servers on Cloudflare."
 />
 
 <LinkCard
 	title="MCP Tools"
-	href="/agents/mcp/protocol/tools/"
+	href="/agents/model-context-protocol/protocol/tools/"
 	description="Add tools to your MCP server."
 />
 
 <LinkCard
 	title="MCP Authorization"
-	href="/agents/mcp/protocol/authorization/"
+	href="/agents/model-context-protocol/protocol/authorization/"
 	description="Authenticate users with OAuth."
 />
 
 <LinkCard
 	title="McpAgent API"
-	href="/agents/mcp/apis/agent-api/"
+	href="/agents/model-context-protocol/apis/agent-api/"
 	description="Build stateful MCP servers."
 />

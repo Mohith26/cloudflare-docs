@@ -18,7 +18,7 @@ Agent tools support `@cloudflare/think` agents and `AIChatAgent` subclasses. `AI
 
 Use `subAgent(...).chat()` when parent code needs direct streaming RPC to a specific child and your code owns forwarding, cancellation, and replay policy.
 
-Use `agentTool()` or `runAgentTool()` when a parent model or workflow delegates work to a child agent and you want retained child runs, event replay, abort bridging, and UI drill-in. For Think-specific turn choices, refer to [Choose a turn API](/agents/api-reference/think/#choose-a-turn-api).
+Use `agentTool()` or `runAgentTool()` when a parent model or workflow delegates work to a child agent and you want retained child runs, event replay, abort bridging, and UI drill-in. For Think-specific turn choices, refer to [Choose a turn API](/agents/harnesses/think/#choose-a-turn-api).
 
 ## Use an agent as an AI SDK tool
 
@@ -237,12 +237,12 @@ If a retained run is still `starting` or `running`, cleanup cancels the child be
 
 <LinkCard
 	title="Sub-agents"
-	href="/agents/api-reference/sub-agents/"
+	href="/agents/runtime/execution/sub-agents/"
 	description="Spawn child agents with isolated storage, typed RPC, and nested client routing."
 />
 
 <LinkCard
 	title="Chat agents"
-	href="/agents/api-reference/chat-agents/"
+	href="/agents/communication-channels/chat/chat-agents/"
 	description="Build AI chat interfaces with AIChatAgent and useAgentChat."
 />

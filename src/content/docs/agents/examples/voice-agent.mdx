@@ -1,10 +1,12 @@
 ---
 title: Voice agent
-pcx_content_type: tutorial
+description: Build a real-time voice agent with speech-to-text, LLM processing, and text-to-speech on Cloudflare Workers.
+pcx_content_type: example
 sidebar:
   order: 2
 products:
   - workers
+  - agents
 difficulty: Intermediate
 ---
 
@@ -189,9 +191,7 @@ function App() {
 					{status === "idle" ? "Start Call" : "End Call"}
 				</button>
 				{status !== "idle" && (
-					<button onClick={toggleMute}>
-						{isMuted ? "Unmute" : "Mute"}
-					</button>
+					<button onClick={toggleMute}>{isMuted ? "Unmute" : "Mute"}</button>
 				)}
 			</div>
 
@@ -209,8 +209,8 @@ function App() {
 
 			{metrics && (
 				<p>
-					LLM: {metrics.llm_ms}ms | TTS: {metrics.tts_ms}ms | First
-					audio: {metrics.first_audio_ms}ms
+					LLM: {metrics.llm_ms}ms | TTS: {metrics.tts_ms}ms | First audio:{" "}
+					{metrics.first_audio_ms}ms
 				</p>
 			)}
 		</div>

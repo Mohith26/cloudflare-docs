@@ -1,8 +1,11 @@
 ---
 title: Agents API
+description: Reference for the Agent base class, lifecycle hooks, SQL storage, and error handling in the Agents SDK.
 pcx_content_type: reference
 sidebar:
   order: 1
+products:
+  - agents
 ---
 
 import { Render, LinkCard } from "~/components";
@@ -29,13 +32,20 @@ Agents require [Cloudflare Durable Objects](/durable-objects/). Refer to [Config
 An Agent is a class that extends the base `Agent` class:
 
 ```ts
-import { Agent } from "agents";
+import { Agent, routeAgentRequest } from "agents";
 
-class MyAgent extends Agent<Env, State> {
+export class MyAgent extends Agent<Env, State> {
 	// Your agent logic
 }
 
-export default MyAgent;
+export default {
+	async fetch(request: Request, env: Env) {
+		return (
+			(await routeAgentRequest(request, env)) ||
+			new Response("Not found", { status: 404 })
+		);
+	},
+} satisfies ExportedHandler<Env>;
 ```
 
 Each Agent can have millions of instances. Each instance is a separate micro-server that runs independently, allowing horizontal scaling. Instances are addressed by a unique identifier (user ID, email, ticket number, etc.).
@@ -75,25 +85,27 @@ flowchart TD
 
 ## Server-side API reference
 
-| Feature               | Methods                                                                              | Documentation                                                       |
-| --------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| **State**             | `setState()`, `onStateChanged()`, `initialState`                                     | [Store and sync state](/agents/runtime/lifecycle/state/) |
-| **Callable methods**  | `@callable()` decorator                                                              | [Callable methods](/agents/runtime/lifecycle/callable-methods/)         |
-| **Scheduling**        | `schedule()`, `scheduleEvery()`, `getSchedules()`, `cancelSchedule()`                | [Schedule tasks](/agents/runtime/execution/schedule-tasks/)             |
-| **Durable execution** | `runFiber()`, `stash()`, `onFiberRecovered()`, `keepAlive()`, `keepAliveWhile()`     | [Durable execution](/agents/runtime/execution/durable-execution/)      |
-| **Queue**             | `queue()`, `dequeue()`, `dequeueAll()`, `getQueue()`                                 | [Queue tasks](/agents/runtime/execution/queue-tasks/)                   |
-| **WebSockets**        | `onConnect()`, `onMessage()`, `onClose()`, `broadcast()`                             | [WebSockets](/agents/runtime/communication/websockets/)                     |
-| **HTTP/SSE**          | `onRequest()`                                                                        | [HTTP and SSE](/agents/runtime/communication/http-sse/)                     |
-| **Email**             | `onEmail()`, `replyToEmail()`                                                        | [Email routing](/agents/communication-channels/email/)                       |
-| **Workflows**         | `runWorkflow()`, `waitForApproval()`                                                 | [Run Workflows](/agents/runtime/execution/run-workflows/)               |
-| **MCP Client**        | `addMcpServer()`, `removeMcpServer()`, `getMcpServers()`                             | [MCP Client API](/agents/mcp/apis/client-api/)             |
-| **AI Models**         | Workers AI, OpenAI, Anthropic bindings                                               | [Using AI models](/agents/runtime/operations/using-ai-models/)           |
-| **Protocol messages** | `shouldSendProtocolMessages()`, `isConnectionProtocolEnabled()`                      | [Protocol messages](/agents/runtime/communication/protocol-messages/)       |
-| **Context**           | `getCurrentAgent()`                                                                  | [getCurrentAgent()](/agents/runtime/lifecycle/get-current-agent/)       |
-| **Observability**     | `subscribe()`, diagnostics channels, Tail Workers                                    | [Observability](/agents/runtime/operations/observability/)               |
-| **Sub-agents**        | `subAgent()`, `abortSubAgent()`, `deleteSubAgent()`                                  | [Sub-agents](/agents/runtime/execution/sub-agents/)                    |
-| **Sessions**          | `Session.create()`, context blocks, compaction, search                               | [Sessions](/agents/runtime/lifecycle/sessions/)                        |
-| **Think**             | `Think` base class, workspace tools, lifecycle hooks, extensions                     | [Think](/agents/harnesses/think/)                              |
+| Feature               | Methods                                                                                          | Documentation                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| **State**             | `setState()`, `onStateChanged()`, `initialState`                                                 | [Store and sync state](/agents/runtime/lifecycle/state/) |
+| **Callable methods**  | `@callable()` decorator                                                                          | [Callable methods](/agents/runtime/lifecycle/callable-methods/)         |
+| **Scheduling**        | `schedule()`, `scheduleEvery()`, `getScheduleById()`, `listSchedules()`                          | [Schedule tasks](/agents/runtime/execution/schedule-tasks/)             |
+| **Durable execution** | `runFiber()`, `startFiber()`, `stash()`, `onFiberRecovered()`, `keepAlive()`, `keepAliveWhile()` | [Durable execution](/agents/runtime/execution/durable-execution/)       |
+| **Queue**             | `queue()`, `dequeue()`, `dequeueAll()`, `getQueue()`                                             | [Queue tasks](/agents/runtime/execution/queue-tasks/)                   |
+| **WebSockets**        | `onConnect()`, `onMessage()`, `onClose()`, `broadcast()`                                         | [WebSockets](/agents/runtime/communication/websockets/)                     |
+| **HTTP/SSE**          | `onRequest()`                                                                                    | [HTTP and SSE](/agents/runtime/communication/http-sse/)                     |
+| **Email**             | `onEmail()`, `replyToEmail()`                                                                    | [Email routing](/agents/communication-channels/email/)                       |
+| **Workflows**         | `runWorkflow()`, `waitForApproval()`                                                             | [Run Workflows](/agents/runtime/execution/run-workflows/)               |
+| **MCP Client**        | `addMcpServer()`, `removeMcpServer()`, `getMcpServers()`                                         | [MCP Client API](/agents/model-context-protocol/apis/client-api/)             |
+| **AI Models**         | Workers AI, OpenAI, Anthropic bindings                                                           | [Using AI models](/agents/runtime/operations/using-ai-models/)           |
+| **Protocol messages** | `shouldSendProtocolMessages()`, `isConnectionProtocolEnabled()`                                  | [Protocol messages](/agents/runtime/communication/protocol-messages/)       |
+| **Context**           | `getCurrentAgent()`                                                                              | [getCurrentAgent()](/agents/runtime/lifecycle/get-current-agent/)       |
+| **Observability**     | `subscribe()`, diagnostics channels, Tail Workers                                                | [Observability](/agents/runtime/operations/observability/)               |
+| **Sub-agents**        | `subAgent()`, `abortSubAgent()`, `deleteSubAgent()`                                              | [Sub-agents](/agents/runtime/execution/sub-agents/)                     |
+| **Agent tools**       | `runAgentTool()`, `clearAgentToolRuns()`, `hasAgentToolRun()`                                    | [Agent tools](/agents/runtime/execution/agent-tools/)                   |
+| **Sessions**          | `Session.create()`, context blocks, compaction, search                                           | [Sessions](/agents/runtime/lifecycle/sessions/)                         |
+| **Think**             | `Think` base class, workspace tools, lifecycle hooks, extensions                                 | [Think](/agents/harnesses/think/)                               |
+| **Chat SDK**          | `createChatSdkState()`, `ChatSdkStateAgent`                                                      | [Chat SDK](/agents/runtime/execution/chat-sdk/)                         |
 
 ## SQL API
 
@@ -114,12 +126,15 @@ For state that needs to sync with clients, use the [State API](/agents/runtime/l
 
 ## Client-side API reference
 
-| Feature              | Methods          | Documentation                                                                 |
-| -------------------- | ---------------- | ----------------------------------------------------------------------------- |
-| **WebSocket client** | `AgentClient`    | [Client SDK](/agents/communication-channels/chat/client-sdk/)                               |
-| **HTTP client**      | `agentFetch()`   | [Client SDK](/agents/communication-channels/chat/client-sdk/#http-requests-with-agentfetch) |
-| **React hook**       | `useAgent()`     | [Client SDK](/agents/communication-channels/chat/client-sdk/#react)                         |
-| **Chat hook**        | `useAgentChat()` | [Client SDK](/agents/communication-channels/chat/client-sdk/)                               |
+| Feature               | Methods                | Documentation                                                                     |
+| --------------------- | ---------------------- | --------------------------------------------------------------------------------- |
+| **WebSocket client**  | `AgentClient`          | [Client SDK](/agents/communication-channels/chat/client-sdk/)                                   |
+| **HTTP client**       | `agentFetch()`         | [Client SDK](/agents/communication-channels/chat/client-sdk/#http-requests-with-agentfetch)     |
+| **React hook**        | `useAgent()`           | [Client SDK](/agents/communication-channels/chat/client-sdk/#react)                             |
+| **Chat hook**         | `useAgentChat()`       | [Client SDK](/agents/communication-channels/chat/client-sdk/)                                   |
+| **Agent tool events** | `useAgentToolEvents()` | [Agent tools](/agents/runtime/execution/agent-tools/#render-child-timelines-in-react) |
+
+Module-level helper exports include `agentTool()` from `agents/agent-tools`, which converts a Think or `AIChatAgent` subclass into an AI SDK tool definition.
 
 ### Quick example
 
@@ -146,7 +161,7 @@ function App() {
 For AI chat applications, extend `AIChatAgent` instead of `Agent`:
 
 ```ts
-import { AIChatAgent } from "agents/ai-chat-agent";
+import { AIChatAgent } from "@cloudflare/ai-chat";
 
 class ChatAgent extends AIChatAgent {
 	async onChatMessage(onFinish) {

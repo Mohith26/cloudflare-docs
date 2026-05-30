@@ -12,9 +12,9 @@ products:
 
 import { TypeScriptExample, LinkCard } from "~/components";
 
-MCP tools are functions that an [MCP server](/agents/mcp/) exposes for clients to call. When an LLM decides it needs to take an action — look up data, run a calculation, call an API — it invokes a tool. The MCP server executes the tool and returns the result.
+MCP tools are functions that an [MCP server](/agents/model-context-protocol/) exposes for clients to call. When an LLM decides it needs to take an action — look up data, run a calculation, call an API — it invokes a tool. The MCP server executes the tool and returns the result.
 
-Tools are defined using the `@modelcontextprotocol/sdk` package. The Agents SDK handles transport and lifecycle; the tool definitions are the same regardless of whether you use [`createMcpHandler`](/agents/mcp/apis/handler-api/) or [`McpAgent`](/agents/mcp/apis/agent-api/).
+Tools are defined using the `@modelcontextprotocol/sdk` package. The Agents SDK handles transport and lifecycle; the tool definitions are the same regardless of whether you use [`createMcpHandler`](/agents/model-context-protocol/apis/handler-api/) or [`McpAgent`](/agents/model-context-protocol/apis/agent-api/).
 
 :::note[Experimental WebMCP adapter]
 
@@ -134,7 +134,7 @@ server.tool(
 
 ## Using tools with `createMcpHandler`
 
-For stateless MCP servers, define tools inside a factory function and pass the server to [`createMcpHandler`](/agents/mcp/apis/handler-api/):
+For stateless MCP servers, define tools inside a factory function and pass the server to [`createMcpHandler`](/agents/model-context-protocol/apis/handler-api/):
 
 <TypeScriptExample>
 
@@ -165,7 +165,7 @@ export default {
 
 ## Using tools with `McpAgent`
 
-For stateful MCP servers, define tools in the `init()` method of an [`McpAgent`](/agents/mcp/apis/agent-api/). Tools have access to the agent instance via `this`, which means they can read and write state.
+For stateful MCP servers, define tools in the `init()` method of an [`McpAgent`](/agents/model-context-protocol/apis/agent-api/). Tools have access to the agent instance via `this`, which means they can read and write state.
 
 <TypeScriptExample>
 
@@ -200,24 +200,24 @@ export class MyMCP extends McpAgent {
 
 <LinkCard
 	title="Build a remote MCP server"
-	href="/agents/mcp/guides/remote-mcp-server/"
+	href="/agents/model-context-protocol/guides/remote-mcp-server/"
 	description="Step-by-step guide to deploying an MCP server on Cloudflare."
 />
 
 <LinkCard
 	title="createMcpHandler API"
-	href="/agents/mcp/apis/handler-api/"
+	href="/agents/model-context-protocol/apis/handler-api/"
 	description="Reference for stateless MCP servers."
 />
 
 <LinkCard
 	title="McpAgent API"
-	href="/agents/mcp/apis/agent-api/"
+	href="/agents/model-context-protocol/apis/agent-api/"
 	description="Reference for stateful MCP servers."
 />
 
 <LinkCard
 	title="MCP authorization"
-	href="/agents/mcp/protocol/authorization/"
+	href="/agents/model-context-protocol/protocol/authorization/"
 	description="Add OAuth authentication to your MCP server."
 />
