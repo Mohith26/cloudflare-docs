@@ -1,0 +1,162 @@
+---
+// Wrangler OAuth consent granted — v2b Variant B: logo left, text right
+import "../styles/landing.css";
+
+const agents = ["claude", "codex", "cursor", "copilot"];
+const cfLogoD = "m27.16 18.507.204-.735c.242-.873.152-1.68-.255-2.274-.374-.547-.998-.868-1.755-.906l-14.346-.19a.3.3 0 0 1-.127-.034.3.3 0 0 1-.099-.09.31.31 0 0 1-.03-.27.4.4 0 0 1 .128-.185.37.37 0 0 1 .205-.081l14.479-.192c1.717-.082 3.576-1.536 4.227-3.31l.826-2.25a.55.55 0 0 0 .022-.298C29.702 3.29 25.94 0 21.44 0c-4.146 0-7.667 2.792-8.928 6.673a4.1 4.1 0 0 0-2.978-.86c-1.99.206-3.589 1.877-3.786 3.953a4.6 4.6 0 0 0 .11 1.547C2.605 11.41 0 14.189 0 17.603q0 .459.065.911c.009.07.042.134.093.18.05.047.116.072.183.073l26.485.003h.007a.34.34 0 0 0 .205-.076.36.36 0 0 0 .122-.187";
+const cfLogoD2 = "M31.94 8.153q-.2 0-.397.01a.2.2 0 0 0-.062.014.2.2 0 0 0-.091.061.24.24 0 0 0-.054.098l-.564 2.033c-.243.874-.152 1.68.254 2.274.375.547.998.868 1.756.906l3.058.191a.3.3 0 0 1 .123.035.28.28 0 0 1 .142.22.3.3 0 0 1-.015.14.4.4 0 0 1-.128.185.37.37 0 0 1-.205.08l-3.177.192c-1.725.083-3.585 1.536-4.235 3.31l-.23.626a.18.18 0 0 0 .017.16.166.166 0 0 0 .134.08h10.941c.064 0 .126-.021.176-.06a.3.3 0 0 0 .106-.16 8.5 8.5 0 0 0 .291-2.216c0-4.517-3.51-8.18-7.84-8.18";
+---
+
+<Fragment set:html={`<!doctype html>`} />
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Cloudflare Workers</title>
+		<link rel="icon" type="image/svg+xml" href="https://welcome.developers.workers.dev/favicon.svg" />
+		<style is:inline>
+			:root {
+				--kumo-canvas: #f0f0f2; --kumo-base: #fff; --kumo-tint: oklch(97% 0 0);
+				--kumo-text-default: oklch(21% 0.006 285.885); --kumo-text-subtle: oklch(55.6% 0 0); --kumo-text-inactive: oklch(70.8% 0 0);
+				--kumo-hairline: oklch(93.5% 0 0);
+				--kumo-shadow-card: 0 0 0 1px oklch(0% 0 0 / 0.04), 0 1px 2px oklch(0% 0 0 / 0.04), 0 2px 8px oklch(0% 0 0 / 0.03);
+				--kumo-shadow-xs: 0 1px 2px oklch(0% 0 0 / 0.05);
+				--kumo-success-text: oklch(43.2% 0.095 166.913); --kumo-success-tint: oklch(95% 0.052 163.051);
+				--kumo-btn-hover: oklch(30% 0.006 285.885);
+			}
+			[data-theme="dark"] {
+				--kumo-canvas: #111113; --kumo-base: #18181B; --kumo-tint: oklch(26.9% 0 0);
+				--kumo-text-default: oklch(97% 0 0); --kumo-text-subtle: oklch(70.8% 0 0); --kumo-text-inactive: oklch(43.9% 0 0);
+				--kumo-hairline: rgba(255,255,255,0.08);
+				--kumo-shadow-card: 0 0 0 1px rgba(255,255,255,0.1), 0 1px 2px oklch(0% 0 0 / 0.3), 0 2px 8px oklch(0% 0 0 / 0.2);
+				--kumo-shadow-xs: 0 1px 2px oklch(0% 0 0 / 0.2);
+				--kumo-success-text: oklch(90.5% 0.093 164.15); --kumo-success-tint: oklch(37.8% 0.077 168.94);
+				--kumo-btn-hover: oklch(85% 0 0);
+			}
+			html { color-scheme: light dark; }
+			.copy-prompt-btn .harness-icon-light { display: none; }
+			.copy-prompt-btn .harness-icon-dark { display: block; }
+			[data-theme="dark"] .copy-prompt-btn .harness-icon-light { display: block; }
+			[data-theme="dark"] .copy-prompt-btn .harness-icon-dark { display: none; }
+			.cp-label::before { content: "Copy prompt"; }
+			.copy-prompt-btn[data-copied="true"] .cp-label::before { content: "Copied"; }
+			.copy-prompt-btn[data-copied="true"] { background: var(--kumo-success-text); }
+			#theme-btn .icon-sun, #theme-btn .icon-moon, #theme-btn .icon-system { display: none; }
+			[data-theme-mode="light"] #theme-btn .icon-sun { display: block; }
+			[data-theme-mode="dark"] #theme-btn .icon-moon { display: block; }
+			[data-theme-mode="system"] #theme-btn .icon-system { display: block; }
+			@media (hover: hover) and (pointer: fine) {
+				.copy-prompt-btn:hover { background: var(--kumo-btn-hover); }
+				.copy-prompt-btn[data-copied="true"]:hover { background: var(--kumo-success-text); }
+				.prompt-secondary:hover { color: var(--kumo-text-default); text-decoration: underline; }
+				.footer-link:hover { color: var(--kumo-text-default); text-decoration: underline; }
+				#theme-btn:hover { background: var(--kumo-tint); color: var(--kumo-text-subtle); }
+			}
+		</style>
+		<script is:inline>
+			let _mode; try { _mode = localStorage.getItem("theme"); } catch(_) {}
+			if (_mode !== "light" && _mode !== "dark" && _mode !== "system") _mode = "system";
+			(function(mode) {
+				const dark = mode === "dark" || (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+				document.documentElement.dataset.themeMode = mode;
+				document.documentElement.dataset.theme = dark ? "dark" : "light";
+			})(_mode);
+			document.write('<svg xmlns="http://www.w3.org/2000/svg" style="display:none"><symbol id="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol><symbol id="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol><symbol id="system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></symbol></svg>');
+		</script>
+	</head>
+	<body class="m-0 h-dvh antialiased font-sans text-sm font-normal -tracking-tight" style="background: var(--kumo-canvas); color: var(--kumo-text-default);">
+		<button id="theme-btn" aria-label="Toggle theme" class="fixed top-3.5 right-3.5 z-50 flex size-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent transition-[background-color,color] duration-150" style="color: var(--kumo-text-inactive);">
+			<svg class="icon-sun block size-4" aria-hidden="true"><use href="#sun"></use></svg>
+			<svg class="icon-moon block size-4" aria-hidden="true"><use href="#moon"></use></svg>
+			<svg class="icon-system block size-4" aria-hidden="true"><use href="#system"></use></svg>
+		</button>
+
+		<main class="flex h-full items-center justify-center p-6 sm:p-4">
+			<div class="w-full max-w-[580px] rounded-2xl" style="background: var(--kumo-base); box-shadow: var(--kumo-shadow-card);">
+				<!-- Hero: logo left, text right -->
+				<div class="flex items-center gap-4 px-8 pt-8 pb-8 max-sm:px-6 max-sm:pt-6 max-sm:pb-6 max-[480px]:flex-col max-[480px]:items-start max-[480px]:gap-3 max-[480px]:px-5 max-[480px]:pt-6 max-[480px]:pb-5">
+					<div class="grid size-16 shrink-0 place-items-center rounded-full border" style="background: var(--kumo-base); border-color: var(--kumo-hairline); box-shadow: var(--kumo-shadow-xs);" aria-label="Cloudflare">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 19" fill="none" class="block h-auto w-9">
+							<path fill="#F6821F" d={cfLogoD}></path>
+							<path fill="#FBAD41" d={cfLogoD2}></path>
+						</svg>
+					</div>
+					<div class="min-w-0">
+						<div class="mb-1 flex items-center gap-2.5">
+							<h1 class="text-[22px] font-semibold leading-[1.2] -tracking-[0.025em] max-[480px]:text-xl">Authorization granted to Wrangler</h1>
+							<span class="inline-grid size-5 shrink-0 place-items-center rounded-full max-[480px]:size-[18px]" style="color: var(--kumo-success-text); background: var(--kumo-success-tint);" aria-label="Connected">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="size-3 max-[480px]:size-2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+							</span>
+						</div>
+						<p class="text-sm font-normal leading-relaxed" style="color: var(--kumo-text-subtle);">Wrangler is now authenticated. You can develop and deploy Workers directly from your terminal.</p>
+					</div>
+				</div>
+
+				<hr class="m-0 h-px border-none" style="background: var(--kumo-hairline);" />
+
+				<!-- Prompt -->
+				<section class="px-8 pt-7 pb-8 max-sm:px-6 max-sm:pt-6 max-sm:pb-7 max-[480px]:px-5 max-[480px]:pt-5 max-[480px]:pb-6">
+					<h2 class="mb-1.5 text-xl font-semibold leading-tight -tracking-[0.025em] max-[480px]:text-lg" style="color: var(--kumo-text-default);">Build with your favorite AI agent</h2>
+					<p class="mb-4 text-sm font-normal leading-relaxed" style="color: var(--kumo-text-subtle);">Paste into any AI coding agent to install Cloudflare agent tooling:</p>
+					<div class="flex flex-wrap items-center gap-4 max-[480px]:gap-3">
+						<button class="copy-prompt-btn inline-flex cursor-pointer items-center gap-2.5 rounded-full border-none py-2.5 pr-[18px] pl-3.5 text-[13px] font-medium -tracking-tight transition-[background-color,transform] duration-200 active:scale-[0.97]" style="background: var(--kumo-text-default); color: var(--kumo-base);" id="copy-prompt-btn" type="button" aria-label="Copy prompt to clipboard">
+							<span class="inline-flex h-5 shrink-0 items-center gap-[3px]" aria-hidden="true">
+								{agents.map((agent) => (
+									<span class="inline-flex size-[18px] shrink-0 items-center justify-center">
+										<img src={`/icons/agents/${agent}/light.svg`} alt="" class="harness-icon harness-icon-light block size-full object-contain" loading="lazy" decoding="async" />
+										<img src={`/icons/agents/${agent}/dark.svg`} alt="" class="harness-icon harness-icon-dark block size-full object-contain" loading="lazy" decoding="async" />
+									</span>
+								))}
+							</span>
+							<span class="cp-label"></span>
+						</button>
+						<a href="https://developers.cloudflare.com/agent-setup/" class="prompt-secondary inline-flex items-center gap-1.5 text-[13px] font-medium no-underline transition-colors duration-150" style="color: var(--kumo-text-subtle);">
+							Or follow a step-by-step guide for your agent
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="size-3"><polyline points="9 18 15 12 9 6"></polyline></svg>
+						</a>
+					</div>
+				</section>
+
+				<hr class="m-0 h-px border-none" style="background: var(--kumo-hairline);" />
+
+				<!-- Footer -->
+				<div class="flex flex-wrap items-center justify-center gap-1.5 px-8 pt-4 pb-1.5 max-[480px]:px-5 max-[480px]:pt-3.5 max-[480px]:pb-1">
+					<a href="https://dash.cloudflare.com/" class="footer-link text-xs font-medium no-underline transition-colors duration-150" style="color: var(--kumo-text-subtle);">Dashboard</a>
+					<span class="select-none text-xs" style="color: var(--kumo-text-inactive);" aria-hidden="true">&middot;</span>
+					<a href="https://developers.cloudflare.com/workers/" class="footer-link text-xs font-medium no-underline transition-colors duration-150" style="color: var(--kumo-text-subtle);">Workers Docs</a>
+					<span class="select-none text-xs" style="color: var(--kumo-text-inactive);" aria-hidden="true">&middot;</span>
+					<a href="https://developers.cloudflare.com/workers/wrangler/" class="footer-link text-xs font-medium no-underline transition-colors duration-150" style="color: var(--kumo-text-subtle);">Wrangler CLI</a>
+				</div>
+				<div class="px-8 pt-2.5 pb-3.5 text-center max-[480px]:px-5 max-[480px]:pt-2 max-[480px]:pb-3">
+					<p class="text-xs font-normal" style="color: var(--kumo-text-inactive);">You can close this window.</p>
+				</div>
+			</div>
+		</main>
+
+		<script is:inline>
+			document.addEventListener("DOMContentLoaded", function() {
+				var ORDER = ["light","dark","system"];
+				function applyMode(mode) {
+					var dark = mode === "dark" || (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+					document.documentElement.dataset.themeMode = mode;
+					document.documentElement.dataset.theme = dark ? "dark" : "light";
+					try { localStorage.setItem("theme", mode); } catch(_) {}
+				}
+				window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function() {
+					if (document.documentElement.dataset.themeMode === "system") applyMode("system");
+				});
+				document.getElementById("theme-btn").addEventListener("click", function() {
+					var current = document.documentElement.dataset.themeMode || "system";
+					applyMode(ORDER[(ORDER.indexOf(current) + 1) % ORDER.length]);
+				});
+				var btn = document.getElementById("copy-prompt-btn");
+				if (btn) btn.addEventListener("click", function() {
+					navigator.clipboard.writeText("Fetch https://developers.cloudflare.com/agent-setup/prompt.md").then(function() {
+						btn.dataset.copied = "true"; btn.setAttribute("aria-label","Copied");
+						setTimeout(function() { delete btn.dataset.copied; btn.setAttribute("aria-label","Copy prompt to clipboard"); }, 1500);
+					}).catch(function(){});
+				});
+			});
+		</script>
+	</body>
+</html>
