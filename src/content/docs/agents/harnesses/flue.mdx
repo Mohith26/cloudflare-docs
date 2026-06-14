@@ -19,7 +19,7 @@ import {
 export const fluePrompt =
 	"Read https://flueframework.com/start.md then help create my first Flue agent on Cloudflare Workers. Use Flue's Cloudflare target, configure Wrangler migrations, and explain what runs in Workers, Durable Objects, and any sandbox.";
 
-[Flue](https://flueframework.com/) is a TypeScript harness framework for building agents and agent-backed workflows. On Cloudflare, Flue builds your project into a Worker and uses the Agents SDK runtime for Durable Object-backed agent instances.
+[Flue](https://flueframework.com/) is a TypeScript harness framework for building agents and agent-backed workflows. On Cloudflare, Flue builds your project into a Worker and uses the Agents SDK runtime for [Durable Object](/durable-objects/)-backed agent instances.
 
 ## Start with an agent prompt
 
@@ -48,14 +48,6 @@ Build the Cloudflare Worker artifact:
 Deploy with `wrangler`:
 
 <PackageManagers type="exec" pkg="wrangler" args="deploy" />
-
-## What runs where
-
-| Question                         | Answer                                                                                                                               |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Where does the agent run?        | In an Agents SDK Durable Object. Flue generates the Durable Object class and binding for each Cloudflare-targeted agent or workflow. |
-| Where is session history stored? | In Durable Object SQLite. This preserves conversation state, but not files in the default virtual sandbox.                           |
-| Where does a container run?      | In [Cloudflare Containers](/containers/) through [Sandbox](/agents/tools/sandbox/). Use this when the agent needs a Linux container. |
 
 ## How Flue uses the Agents SDK
 
