@@ -19,12 +19,17 @@ interface Props {
 	 * section, where the surrounding copy already provides context).
 	 */
 	tooltip?: string;
+	/**
+	 * Prompt copied to the clipboard. Defaults to the homepage agent setup prompt.
+	 */
+	prompt?: string;
 }
 
 const {
 	agentIds = ["claude", "cursor", "codex", "opencode"] as const,
 	class: className = "",
 	tooltip,
+	prompt,
 } = Astro.props;
 
 const featuredAgents = AGENTS.filter((a) =>
@@ -38,6 +43,7 @@ const featuredAgents = AGENTS.filter((a) =>
 	size="md"
 	type="button"
 	data-tooltip={tooltip}
+	data-prompt={prompt}
 >
 	<span class="inline-flex items-center gap-2.5 text-base font-medium">
 		<span
@@ -102,7 +108,9 @@ const featuredAgents = AGENTS.filter((a) =>
 
 				btn.addEventListener("click", async () => {
 					try {
-						await navigator.clipboard.writeText(AGENT_SETUP_PROMPT);
+						await navigator.clipboard.writeText(
+							btn.dataset.prompt || AGENT_SETUP_PROMPT,
+						);
 					} catch {
 						return;
 					}
