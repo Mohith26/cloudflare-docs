@@ -23,7 +23,7 @@ export const fluePrompt =
 
 ## Start with an agent prompt
 
-The fastest way to get started is to paste a setup prompt into your coding agent. It will read Flue's guide and create a Cloudflare-targeted project with you.
+Copy this prompt and give it to Claude Code, Codex, Cursor, OpenCode, or another coding agent. It will read Flue's guide and create a Cloudflare-targeted project with you.
 
 <CopyPromptButton
 	prompt={fluePrompt}
@@ -31,15 +31,11 @@ The fastest way to get started is to paste a setup prompt into your coding agent
 	variant="primary"
 />
 
-Paste the prompt into Claude Code, Codex, Cursor, OpenCode, or another coding agent.
-
-The agent should help you choose:
+The agent will help you choose:
 
 - The agent or workflow you want to build
 - The Flue source layout for your project
 - The model provider and model specifier
-- The Cloudflare target and `wrangler.jsonc` migration entries
-- Any sandbox strategy the agent needs
 
 When the generated project is ready, run it locally with Flue's Cloudflare target:
 
@@ -55,25 +51,23 @@ Deploy with `wrangler`:
 
 ## What runs where
 
-- The agent runs in an Agents SDK Durable Object. Flue generates the Durable Object class and binding for each Cloudflare-targeted agent or workflow.
-- Session history is stored in Durable Object SQLite. This preserves conversation state, but not files in the default virtual sandbox.
-- If the agent needs a Linux container, run that workspace in [Cloudflare Containers](/containers/) through [Sandbox](/agents/tools/sandbox/).
+| Question                         | Answer                                                                                                                               |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Where does the agent run?        | In an Agents SDK Durable Object. Flue generates the Durable Object class and binding for each Cloudflare-targeted agent or workflow. |
+| Where is session history stored? | In Durable Object SQLite. This preserves conversation state, but not files in the default virtual sandbox.                           |
+| Where does a container run?      | In [Cloudflare Containers](/containers/) through [Sandbox](/agents/tools/sandbox/). Use this when the agent needs a Linux container. |
 
-## Agents SDK parts Flue uses
+## How Flue uses the Agents SDK
 
-Flue does not replace the Agents SDK runtime. It builds on the runtime and owns the higher-level harness.
+| Agents SDK part                                                                                                    | How Flue uses it                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| [`Agent` class](/agents/runtime/lifecycle/agent-class/)                                                            | Gives each generated Flue agent or workflow a durable identity and lifecycle on Cloudflare Workers |
+| [Durable Object SQLite](/agents/runtime/agents-api/#sql-api)                                                       | Stores each Flue agent session in the agent's SQLite database                                      |
+| [Durable execution fibers](/agents/runtime/execution/durable-execution/)                                           | Provides a recovery boundary for accepted work when a Durable Object is interrupted                |
+| [Scheduled tasks and alarms](/agents/runtime/execution/schedule-tasks/)                                            | Lets Flue coordinate runtime wakes, scheduled work, and background activity                        |
+| [State](/agents/runtime/lifecycle/state/), [queues](/agents/runtime/execution/queue-tasks/), and lifecycle methods | Exposes additional Agents SDK functionality you can use from a Flue agent                          |
 
-| Agents SDK part                  | How Flue uses it                                                                                                                  |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Durable Object-backed agent base | Flue generates the Durable Object classes instead of requiring you to write `extends Agent` yourself                              |
-| Durable Object SQLite            | Generated Flue classes use `new_sqlite_classes` for durable session and execution state                                           |
-| Durable execution fibers         | Flue uses SDK durability APIs such as `runFiber` for durable admission and interruption handling                                  |
-| Alarms                           | Flue and the Agents SDK use alarms for scheduled runtime work and alarm multiplexing                                              |
-| Native lifecycle APIs            | Flue exposes an extension point for SDK methods such as `onStart()`, `schedule()`, `scheduleEvery()`, `queue()`, and `setState()` |
-
-Flue owns `fetch()` composition, generated route handling, `onRequest()`, `onFiberRecovered()`, and `alarm()` in its generated classes. Do not override those methods in a Flue-generated Durable Object. Use Flue's Cloudflare extension point when you need native Agents SDK hooks.
-
-For example, add a recurring scheduled method to the generated `assistant` agent:
+Use Flue's Cloudflare extension point when you need native Agents SDK hooks. For example, add a recurring scheduled method to the generated `assistant` agent:
 
 <TypeScriptExample filename=".flue/agents/assistant.ts">
 
@@ -106,8 +100,6 @@ export const cloudflare = extend({
 ```
 
 </TypeScriptExample>
-
-Use Flue APIs for the harness itself: `createAgent()` for agent configuration, `harness.session()` for prompts and session work, Flue tools and skills for model capabilities, and Flue routing for `/agents/:name/:id` and `/workflows/:name` endpoints.
 
 ## Related resources
 
