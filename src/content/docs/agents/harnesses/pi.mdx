@@ -10,308 +10,60 @@ products:
 
 import {
 	CardGrid,
+	CopyPromptButton,
 	LinkCard,
 	PackageManagers,
-	Steps,
-	TypeScriptExample,
-	WranglerConfig,
 } from "~/components";
 
-[Pi](https://pi.dev/docs/latest) is a minimal terminal coding harness. You can embed Pi's agent loop in an Agents SDK Durable Object when you want Pi to control the model-facing reasoning loop, but want Cloudflare to provide the durable runtime.
+export const piPrompt =
+	"Read https://pi.dev/docs/latest/sdk and https://github.com/irvinebroque/pi-on-cloudflare then help create my first Pi harness on Cloudflare Agents. Use the Agents SDK Agent class, Durable Object SQLite migrations, runFiber(), stash(), onFiberRecovered(), AI Gateway, and explain what runs in Workers, Durable Objects, and any sandbox.";
+
+[Pi](https://pi.dev/docs/latest) is a minimal terminal coding harness. On Cloudflare, you can embed Pi's model-facing loop in an Agents SDK Durable Object when you want Pi to control the agent behavior and Cloudflare to provide the durable runtime.
 
 Use this pattern when you want a custom Worker API around Pi instead of a generated harness application. The Worker receives requests, routes them to an Agents SDK `Agent`, and that `Agent` runs a Pi turn inside a durable fiber.
 
-## How it fits
+## Start with an agent prompt
 
-Pi and the Agents SDK own different parts of the application:
+Copy this prompt and give it to Claude Code, Codex, Cursor, OpenCode, or another coding agent. It will read Pi's SDK docs and the complete [Pi on Cloudflare example](https://github.com/irvinebroque/pi-on-cloudflare) and create a Cloudflare-targeted project with you.
 
-- **Pi** owns the model-facing loop, message events, tool calls, and coding-agent behavior.
-- **The Agents SDK** owns the Durable Object, state, fibers, recovery hooks, and routing from Worker code to an agent instance.
-- **Cloudflare bindings** provide model access, static assets, and optional code execution sandboxes.
+<CopyPromptButton
+	prompt={piPrompt}
+	showAgentIcons={false}
+	variant="primary"
+/>
 
-The request flow looks like this:
+The agent will help you choose:
 
-```txt
-Browser or API client
-  -> Worker API
-  -> PiAgent Durable Object
-  -> runFiber("pi-prompt")
-  -> Pi core agent
-  -> env.AI.run(... AI Gateway ...)
-```
+- The Worker API or UI you want around Pi
+- The model and AI Gateway configuration
+- Whether to expose a code execution tool
+- The recovery behavior for interrupted turns
 
-## Prerequisites
-
-Before you begin, make sure you have:
-
-- Node.js `22.18.0` or later
-- A Cloudflare account
-- `wrangler` authenticated with your Cloudflare account
-- An AI Gateway named `default`, or another gateway name you configure in `AI_GATEWAY_ID`
-
-The example uses the Workers AI binding with AI Gateway. Workers AI models use Cloudflare-native billing, and supported third-party models use AI Gateway Unified Billing, so your Worker code does not need to read provider API keys. If you need stored bring-your-own-key credentials, call the provider-specific AI Gateway endpoint from your Pi stream function instead of `env.AI.run()`.
-
-## Create a Worker project
-
-<Steps>
-
-1. Create a Worker project.
-
-	<PackageManagers
-		type="create"
-		pkg="cloudflare@latest"
-		args="pi-agent-worker"
-	/>
-
-2. Install the Agents SDK and Pi packages.
-
-	<PackageManagers pkg="agents @earendil-works/pi-agent-core @earendil-works/pi-ai" />
-
-	Pi's Node.js SDK documentation uses `@earendil-works/pi-coding-agent`. The Cloudflare example uses the lower-level Pi core packages so the Agents SDK owns the Durable Object runtime and your Worker owns model and tool bindings.
-
-3. Install `@cloudflare/codemode` if you want Pi to run generated JavaScript in isolated Dynamic Workers.
-
-	<PackageManagers pkg="@cloudflare/codemode" />
-
-</Steps>
-
-The full example repository at [irvinebroque/pi-on-cloudflare](https://github.com/irvinebroque/pi-on-cloudflare) also includes a static chat UI. This guide focuses on the Worker API and Durable Object shape.
-
-## Configure Cloudflare
-
-Add the required bindings, Durable Object migration, and optional Worker Loader binding to `wrangler.jsonc`:
-
-<WranglerConfig>
-
-```toml
-name = "pi-agent-worker"
-main = "src/index.ts"
-compatibility_date = "$today"
-compatibility_flags = ["nodejs_compat"]
-
-[vars]
-PI_MODEL = "openai/gpt-4.1-mini"
-AI_GATEWAY_ID = "default"
-
-[ai]
-binding = "AI"
-
-[[durable_objects.bindings]]
-name = "PiAgent"
-class_name = "PiAgent"
-
-[[worker_loaders]]
-binding = "LOADER"
-
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["PiAgent"]
-
-[assets]
-directory = "./public"
-run_worker_first = ["/api/*"]
-```
-
-</WranglerConfig>
-
-Use `new_sqlite_classes` for the `PiAgent` class because Agents SDK state and fibers use Durable Object SQLite. Keep deployed migration entries in order, and append new tags for future Durable Object classes.
-
-If you do not expose a code execution tool, omit `@cloudflare/codemode`, `worker_loaders`, and the `LOADER` binding.
-
-## Create the Agent wrapper
-
-Define a Durable Object class that extends the Agents SDK `Agent` class. The following `src/index.ts` excerpt shows the Agents SDK wrapper, API routing, and recovery model.
-
-<TypeScriptExample filename="src/index.ts">
-
-```ts
-import { Agent, getAgentByName, type FiberRecoveryContext } from "agents";
-import { Agent as Pi } from "@earendil-works/pi-agent-core";
-
-// Implement these helpers with the Pi-to-AI-Gateway bridge from the example.
-declare function modelFromGatewayName(name: string): any;
-declare function streamFromGateway(env: Env, context: any): any;
-
-type State = {
-	requests: number;
-	recoveries?: number;
-	lastRecoveredAnswer?: string;
-};
-
-const SYSTEM_PROMPT =
-	"You are a concise assistant running inside a Cloudflare Durable Object.";
-
-export class PiAgent extends Agent<Env, State> {
-	initialState: State = { requests: 0 };
-
-	status() {
-		return {
-			model: this.env.PI_MODEL,
-			gateway: this.env.AI_GATEWAY_ID,
-			requests: this.state.requests,
-			recoveries: this.state.recoveries ?? 0,
-			lastRecoveredAnswer: this.state.lastRecoveredAnswer,
-		};
-	}
-
-	async runTurn(input: string) {
-		const prompt = input.trim();
-		if (!prompt) throw new Error("Missing prompt");
-
-		return await this.runFiber("pi-prompt", async (fiber) => {
-			fiber.stash({ prompt });
-
-			const result = await this.completeTurn(prompt);
-			this.setState({ requests: this.state.requests + 1 });
-
-			return result;
-		});
-	}
-
-	async onFiberRecovered(ctx: FiberRecoveryContext) {
-		if (ctx.name !== "pi-prompt") return;
-
-		const snapshot = ctx.snapshot as { prompt?: unknown } | null;
-		if (typeof snapshot?.prompt !== "string") return;
-
-		const { answer } = await this.completeTurn(snapshot.prompt);
-		this.setState({
-			requests: this.state.requests + 1,
-			recoveries: (this.state.recoveries ?? 0) + 1,
-			lastRecoveredAnswer: answer,
-		});
-	}
-
-	private async completeTurn(prompt: string) {
-		const pi = new Pi({
-			initialState: {
-				systemPrompt: SYSTEM_PROMPT,
-				model: modelFromGatewayName(this.env.PI_MODEL),
-				thinkingLevel: "off",
-				tools: [],
-			},
-			streamFn: (_model, context) => streamFromGateway(this.env, context),
-		});
-
-		let answer = "";
-		const unsubscribe = pi.subscribe((event) => {
-			if (
-				event.type === "message_update" &&
-				event.assistantMessageEvent.type === "text_delta"
-			) {
-				answer += event.assistantMessageEvent.delta;
-			}
-		});
-
-		try {
-			await pi.prompt(prompt);
-			return { answer, model: this.env.PI_MODEL };
-		} finally {
-			unsubscribe();
-		}
-	}
-}
-
-export default {
-	async fetch(request, env): Promise<Response> {
-		const url = new URL(request.url);
-		const agent = await getAgentByName(env.PiAgent, "default");
-
-		if (request.method === "GET" && url.pathname === "/api/status") {
-			return Response.json(await agent.status());
-		}
-
-		if (request.method === "POST" && url.pathname === "/api/prompt") {
-			const body = (await request.json().catch(() => ({}))) as {
-				prompt?: string;
-			};
-			return Response.json(await agent.runTurn(body.prompt ?? ""));
-		}
-
-		return new Response("Not found", { status: 404 });
-	},
-} satisfies ExportedHandler<Env>;
-```
-
-</TypeScriptExample>
-
-The excerpt omits the `modelFromGatewayName()` and `streamFromGateway()` helpers. Those helpers translate between Pi's model stream interface and the Cloudflare AI binding. For a complete implementation, refer to the [`pi-on-cloudflare` source](https://github.com/irvinebroque/pi-on-cloudflare/blob/main/src/index.ts).
-
-## Call AI Gateway from Pi
-
-Pi expects a stream function. In a Worker, that stream function can call the AI binding with AI Gateway enabled:
-
-<TypeScriptExample>
-
-```ts
-const output = await env.AI.run(
-	env.PI_MODEL,
-	{ messages },
-	{ gateway: { id: env.AI_GATEWAY_ID, collectLog: true } },
-);
-```
-
-</TypeScriptExample>
-
-The `AI` binding can call Workers AI models directly and supported third-party models through AI Gateway Unified Billing. This keeps provider credentials outside the Worker code. For stored bring-your-own-key credentials, call the provider-specific AI Gateway endpoint from your stream function.
-
-## Run locally
-
-Regenerate binding types after changing `wrangler.jsonc`:
+When the generated project is ready, regenerate Worker binding types:
 
 <PackageManagers type="exec" pkg="wrangler" args="types" />
 
-Start local development:
+Run it locally with Wrangler:
 
 <PackageManagers type="exec" pkg="wrangler" args="dev" />
 
-Send a prompt to the single named agent instance:
+Deploy with `wrangler`:
 
-```bash
-curl "http://localhost:8787/api/prompt" \
-	-H "Content-Type: application/json" \
-	--data '{"prompt":"Explain Durable Objects in one sentence."}'
-```
+<PackageManagers type="exec" pkg="wrangler" args="deploy" />
 
-Check the durable state counter:
+## How Pi uses the Agents SDK
 
-```bash
-curl "http://localhost:8787/api/status"
-```
-
-## What runs where
-
-The following table shows how the Pi example maps onto Cloudflare:
-
-| Part                                 | Runs in                            | Notes                                                              |
-| ------------------------------------ | ---------------------------------- | ------------------------------------------------------------------ |
-| Static UI                            | Workers Static Assets              | Optional browser interface served from `public/`                   |
-| `/api/status` and `/api/prompt`      | Worker isolate                     | Custom API routes that call `getAgentByName()`                     |
-| `PiAgent`                            | Durable Object                     | Agents SDK `Agent` class with SQLite-backed state and fibers       |
-| Pi core loop                         | `PiAgent` Durable Object           | Created per turn with `@earendil-works/pi-agent-core`              |
-| Model calls                          | Workers AI binding plus AI Gateway | Uses `env.AI.run()` with `gateway.id`                              |
-| `execute_js` tool                    | Dynamic Worker                     | Optional `@cloudflare/codemode` tool using a Worker Loader binding |
-| State counters and recovery evidence | Agents SDK state                   | Stored with `this.state` and updated with `setState()`             |
-
-Pi does not include a built-in sandbox. If you expose tools that run code, route them through an isolation boundary such as Dynamic Workers, Sandbox, Containers, or another sandbox appropriate for your application.
-
-## Agents SDK parts to use
-
-Pull in the following Agents SDK pieces when you build a Pi agent on Cloudflare:
-
-| Agents SDK part               | Use it for                                                                                             |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `Agent`                       | Define the `PiAgent` Durable Object and access `this.env`, `this.state`, `setState()`, fibers, and SQL |
-| `getAgentByName()`            | Route a Worker API request to a stable agent instance, such as `"default"` or a user ID                |
-| `runFiber()`                  | Run one Pi turn as a durable unit of work inside the Durable Object                                    |
-| `fiber.stash()`               | Persist the prompt or other minimal recovery input before model or tool work starts                    |
-| `onFiberRecovered()`          | Decide how to handle a turn that was interrupted by Durable Object eviction or deployment              |
-| `setState()` and `this.state` | Store small durable metadata, counters, and recovery evidence                                          |
-| `this.sql`                    | Store queryable history or larger collections when state is not enough                                 |
-
-You do not need `routeAgentRequest()`, `AIChatAgent`, or the React hooks for the minimal Pi pattern. Pi owns the harness loop, and your Worker owns the HTTP API. Use those Agents SDK APIs only if your application also needs the standard Agents routing or chat protocol.
+| Agents SDK part                                                 | How Pi uses it                                                                                                      |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| [`Agent` class](/agents/runtime/lifecycle/agent-class/)         | Hosts the `PiAgent` Durable Object and gives the Pi loop access to `this.env`, `this.state`, `setState()`, and SQL |
+| [`getAgentByName()`](/agents/runtime/communication/routing/)    | Routes custom Worker API requests to a stable agent instance, such as `"default"` or a user ID                     |
+| [Durable Object SQLite](/agents/runtime/agents-api/#sql-api)    | Stores Agents SDK state and fiber metadata for the `PiAgent` class                                                  |
+| [Durable execution fibers](/agents/runtime/execution/durable-execution/) | Runs a Pi turn as durable work with `runFiber()` and checkpoints recovery input with `stash()`              |
+| [State](/agents/runtime/lifecycle/state/)                       | Stores small durable metadata, counters, and recovery evidence                                                      |
 
 Use `startFiber()` instead of `runFiber()` when callers need durable acceptance, idempotency, cancellation, and later status inspection rather than a single request waiting for the turn result.
+
+Pi does not include a built-in sandbox. If you expose tools that run code, route them through an isolation boundary such as [Dynamic Workers](/dynamic-workers/), [Sandbox](/agents/tools/sandbox/), [Containers](/containers/), or another sandbox appropriate for your application.
 
 ## Related resources
 
@@ -324,7 +76,7 @@ Use `startFiber()` instead of `runFiber()` when callers need durable acceptance,
 	<LinkCard
 		title="Pi on Cloudflare example"
 		href="https://github.com/irvinebroque/pi-on-cloudflare"
-		description="Minimal Worker, Durable Object, AI Gateway, and Dynamic Worker example."
+		description="Complete Worker, Durable Object, AI Gateway, and Dynamic Worker example."
 	/>
 	<LinkCard
 		title="Durable execution"
