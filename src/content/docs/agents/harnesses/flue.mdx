@@ -1,0 +1,242 @@
+---
+title: Flue
+description: Build and deploy Flue agents on Cloudflare Workers with the Agents SDK runtime.
+pcx_content_type: how-to
+sidebar:
+  order: 10
+products:
+  - agents
+---
+
+import {
+	CardGrid,
+	LinkCard,
+	PackageManagers,
+	Steps,
+	TypeScriptExample,
+	WranglerConfig,
+} from "~/components";
+
+[Flue](https://flueframework.com/) is a TypeScript harness framework for building agents and agent-backed workflows. On Cloudflare, Flue builds your project into a Worker and uses the Agents SDK runtime for Durable Object-backed agent instances.
+
+Use Flue when you want Flue to own the model loop, sessions, tools, skills, subagents, and sandbox selection while Cloudflare owns the compute, routing, durable storage, and optional container sandbox.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- Node.js `22.18.0` or later
+- A Cloudflare account
+- `wrangler` authenticated with your Cloudflare account
+- A large language model (LLM) to use from Flue
+
+This guide uses the Workers AI model specifier `cloudflare/@cf/moonshotai/kimi-k2.6`, so it does not require a third-party provider key. If you use Anthropic, OpenAI, or another provider, store the provider key with `wrangler secret put` before deploying.
+
+## Create a Flue project
+
+<Steps>
+
+1. Create a project directory with a `package.json` file.
+
+	```bash
+	mkdir my-flue-worker
+	cd my-flue-worker
+	npm init -y
+	```
+
+2. Install Flue and the Cloudflare Agents SDK runtime.
+
+	<PackageManagers pkg="@flue/runtime agents@^0.14.1" />
+
+	Flue's Cloudflare target is tested against `agents` 0.14.x. The generated Worker checks that the installed SDK provides the durability APIs Flue relies on.
+
+3. Install the Flue CLI and `wrangler`.
+
+	<PackageManagers pkg="@flue/cli wrangler" dev />
+
+4. Initialize Flue for Cloudflare Workers.
+
+	<PackageManagers type="exec" pkg="flue" args="init --target cloudflare" />
+
+</Steps>
+
+Flue selects authored source from `.flue/`, then `src/`, then the project root. This guide uses the `.flue/` layout so the Flue source remains separate from other application code.
+
+## Add a continuing agent
+
+Create `.flue/agents/assistant.ts`:
+
+<TypeScriptExample filename=".flue/agents/assistant.ts">
+
+```ts
+import { createAgent, type AgentRouteHandler } from "@flue/runtime";
+
+export const description = "Answers Cloudflare Workers questions.";
+
+export const route: AgentRouteHandler = async (_c, next) => next();
+
+export default createAgent(() => ({
+	model: "cloudflare/@cf/moonshotai/kimi-k2.6",
+	instructions:
+		"Answer Cloudflare Workers questions clearly. State uncertainty when you are not sure.",
+}));
+```
+
+</TypeScriptExample>
+
+The filename gives the agent its public name, `assistant`. The `description` export adds metadata to the Flue deployment manifest. The `route` export exposes `POST /agents/assistant/:id` for prompts, and `GET /agents/assistant/:id` reads the agent event stream. The `:id` value selects the Durable Object-backed agent instance, such as a user, ticket, or conversation.
+
+## Configure Cloudflare
+
+Add the required Cloudflare configuration to the project-root `wrangler.jsonc` file.
+
+<WranglerConfig>
+
+```toml
+name = "my-flue-worker"
+compatibility_date = "$today"
+compatibility_flags = ["nodejs_compat"]
+
+[ai]
+binding = "AI"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FlueRegistry", "FlueAssistantAgent"]
+```
+
+</WranglerConfig>
+
+Flue generates the Durable Object classes and bindings for discovered agents and workflows. Your Wrangler file owns the ordered migration history. Every Cloudflare-targeted Flue application includes `FlueRegistry`, and `.flue/agents/assistant.ts` generates `FlueAssistantAgent` with a `FLUE_ASSISTANT_AGENT` binding.
+
+When you add another Flue agent or workflow, append a new migration tag with the new generated class. Do not rewrite migrations that have already been deployed. Generated Flue classes require Durable Object SQLite, so use `new_sqlite_classes`.
+
+## Run locally
+
+Start the Cloudflare-targeted development server:
+
+<PackageManagers type="exec" pkg="flue" args="dev --target cloudflare" />
+
+Flue starts a local Workers development server on port `3583`. Send an HTTP prompt to the `assistant` agent instance named `demo` and wait for the result:
+
+```bash
+curl "http://localhost:3583/agents/assistant/demo?wait=result" \
+	-H "Content-Type: application/json" \
+	--data '{"message":"What can you help me do on Cloudflare?"}'
+```
+
+The default `POST /agents/assistant/demo` response returns stream coordinates. Use `GET /agents/assistant/demo` to read the durable event stream, or use the Flue SDK to prompt and stream events from an application client.
+
+## Deploy
+
+If you use a third-party model provider instead of Workers AI, add the provider key as a Worker secret before deploying:
+
+<PackageManagers
+	type="exec"
+	pkg="wrangler"
+	args="secret put ANTHROPIC_API_KEY"
+/>
+
+Build the Cloudflare Worker artifact:
+
+<PackageManagers type="exec" pkg="flue" args="build --target cloudflare" />
+
+Deploy with `wrangler`:
+
+<PackageManagers type="exec" pkg="wrangler" args="deploy" />
+
+After deployment, call the agent at `https://my-flue-worker.<your-subdomain>.workers.dev/agents/assistant/demo?wait=result` or read events from `https://my-flue-worker.<your-subdomain>.workers.dev/agents/assistant/demo`.
+
+## What runs where
+
+The following table shows how a Flue application maps onto Cloudflare.
+
+| Part                               | Runs in                          | Notes                                                                                                                  |
+| ---------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Flue Worker entrypoint             | Cloudflare Worker isolate        | Generated by `flue build --target cloudflare`; owns HTTP and custom Flue routing                                       |
+| Route middleware                   | Cloudflare Worker isolate        | Runs before Flue admits work into a generated Durable Object                                                           |
+| `FlueRegistry`                     | Durable Object                   | Coordinates generated Flue runtime metadata                                                                            |
+| `FlueAssistantAgent`               | Durable Object                   | Owns the `assistant` agent instance selected by `:id`                                                                  |
+| Session history and accepted input | Durable Object SQLite            | Stores conversation state and queued accepted agent input                                                              |
+| Model calls                        | Workers AI or external providers | `cloudflare/*` model specifiers use Workers AI; other providers use Worker secrets                                     |
+| Default virtual sandbox            | Flue runtime memory              | Uses Flue's lightweight in-memory workspace; it is not a separate Linux container and is not durable workspace storage |
+| Cloudflare Sandbox                 | Cloudflare Containers            | Optional `@cloudflare/sandbox` integration for git, package managers, native binaries, or persistent Linux workspaces  |
+
+Keep conversation state and workspace state separate. Durable Object SQLite preserves Flue session history, but it does not make files in the default virtual sandbox durable. Use [Sandbox](/agents/tools/sandbox/) when the agent needs an isolated Linux environment or a longer-lived workspace.
+
+Flue can also generate workflow endpoints at `/workflows/:name`. These are Flue workflow invocations, not [Cloudflare Workflows](/workflows/) checkpoints. Use Cloudflare Workflows when you need step-level durable orchestration.
+
+## Agents SDK parts Flue uses
+
+Flue does not replace the Agents SDK runtime. It builds on the runtime and owns the higher-level harness.
+
+| Agents SDK part                  | How Flue uses it                                                                                                                  |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Durable Object-backed agent base | Flue generates the Durable Object classes instead of requiring you to write `extends Agent` yourself                              |
+| Durable Object SQLite            | Generated Flue classes use `new_sqlite_classes` for durable session and execution state                                           |
+| Durable execution fibers         | Flue uses SDK durability APIs such as `runFiber` for durable admission and interruption handling                                  |
+| Alarms                           | Flue and the Agents SDK use alarms for scheduled runtime work and alarm multiplexing                                              |
+| Native lifecycle APIs            | Flue exposes an extension point for SDK methods such as `onStart()`, `schedule()`, `scheduleEvery()`, `queue()`, and `setState()` |
+
+Flue owns `fetch()` composition, generated route handling, `onRequest()`, `onFiberRecovered()`, and `alarm()` in its generated classes. Do not override those methods in a Flue-generated Durable Object. Use Flue's Cloudflare extension point when you need native Agents SDK hooks.
+
+For example, add a recurring scheduled method to the generated `assistant` agent:
+
+<TypeScriptExample filename=".flue/agents/assistant.ts">
+
+```ts
+import { createAgent, type AgentRouteHandler } from "@flue/runtime";
+import { extend } from "@flue/runtime/cloudflare";
+
+export const description = "Answers Cloudflare Workers questions.";
+
+export const route: AgentRouteHandler = async (_c, next) => next();
+
+export default createAgent(() => ({
+	model: "cloudflare/@cf/moonshotai/kimi-k2.6",
+	instructions:
+		"Answer Cloudflare Workers questions clearly. State uncertainty when you are not sure.",
+}));
+
+export const cloudflare = extend({
+	base: (Base) =>
+		class extends Base {
+			async onStart() {
+				await this.scheduleEvery(60, "heartbeat");
+			}
+
+			async heartbeat() {
+				this.setState({ ...this.state, lastHeartbeatAt: Date.now() });
+			}
+		},
+});
+```
+
+</TypeScriptExample>
+
+Use Flue APIs for the harness itself: `createAgent()` for agent configuration, `harness.session()` for prompts and session work, Flue tools and skills for model capabilities, and Flue routing for `/agents/:name/:id` and `/workflows/:name` endpoints.
+
+## Related resources
+
+<CardGrid>
+	<LinkCard
+		title="Flue Cloudflare guide"
+		href="https://flueframework.com/docs/ecosystem/deploy/cloudflare/"
+		description="Build and deploy Flue agents on Cloudflare Workers."
+	/>
+	<LinkCard
+		title="Agents SDK runtime"
+		href="/agents/runtime/agents-api/"
+		description="Build on the core Agents SDK runtime directly."
+	/>
+	<LinkCard
+		title="Durable execution"
+		href="/agents/runtime/execution/durable-execution/"
+		description="Recover long-running agent work after Durable Object interruption."
+	/>
+	<LinkCard
+		title="Sandbox"
+		href="/agents/tools/sandbox/"
+		description="Give agents isolated Linux environments for files and commands."
+	/>
+</CardGrid>
