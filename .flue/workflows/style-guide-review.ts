@@ -22,6 +22,7 @@ import {
 	StyleGuideResultFromModelSchema,
 	type StyleGuideResult,
 } from "../lib/style-guide-results";
+import { withCapacityRetry } from "../lib/capacity";
 export type {
 	StyleGuideFinding,
 	StyleGuideResult,
@@ -167,20 +168,41 @@ async function runImpl({
 	// Use structured result mode so flue injects finish/give_up tools and loops
 	// until the model calls finish — works reliably across models that don't
 	// self-terminate.
-	const skillResult = await session.skill("style-guide-review", {
-		result: StyleGuideResultFromModelSchema,
-		args: {
-			pullRequest: {
-				number: pullRequest.number,
-				title: pullRequest.title,
-				base: pullRequest.base,
-				head: pullRequest.head,
-			},
-			diffDir: input.diffDir,
-			commentsPath: input.commentsPath,
-			filename: input.filename,
+	const skillResult = await withCapacityRetry(
+		(signal) =>
+			session.skill("style-guide-review", {
+				result: StyleGuideResultFromModelSchema,
+				signal,
+				args: {
+					pullRequest: {
+						number: pullRequest.number,
+						title: pullRequest.title,
+						base: pullRequest.base,
+						head: pullRequest.head,
+					},
+					diffDir: input.diffDir,
+					commentsPath: input.commentsPath,
+					filename: input.filename,
+				},
+			}),
+		{
+			label: `style-guide-review:${input.number}${input.filename ? `:${input.filename}` : ""}`,
+			attempts: 4,
+			perAttemptTimeoutMs: 4 * 60 * 1000, // 4 min — skill runs up to ~3 min normally
+			onRetry: ({ attempt, delayMs, error }) =>
+				console.log({
+					message: `Style-guide review: model over capacity, backing off`,
+					event: "style_guide_review",
+					number: input.number,
+					filename: input.filename ?? null,
+					runId,
+					attempt,
+					delayMs,
+					error: String(error),
+					action: "capacity_retry",
+				}),
 		},
-	});
+	);
 
 	const rawData = skillResult.data;
 

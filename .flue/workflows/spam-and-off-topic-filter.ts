@@ -29,6 +29,7 @@ import {
 	type SpamFilterPayload,
 } from "../lib/spam-filter";
 import { truncateLogValue } from "../lib/github-webhook";
+import { withCapacityRetry } from "../lib/capacity";
 
 export const route: WorkflowRouteHandler = async (_c, next) => next();
 
@@ -75,10 +76,30 @@ export async function run({ id: runId, init, payload, env }: FlueContext) {
 	const itemType = item.kind === "pull_request" ? "PR" : "Issue";
 	const itemLabel = `${itemType} #${item.number} "${truncateLogValue(item.title)}"`;
 
-	const { data } = await session.skill("spam-and-off-topic-filter", {
-		args: { eventType: input.eventType, item, diff },
-		result: SpamVerdictSchema,
-	});
+	const { data } = await withCapacityRetry(
+		(signal) =>
+			session.skill("spam-and-off-topic-filter", {
+				signal,
+				args: { eventType: input.eventType, item, diff },
+				result: SpamVerdictSchema,
+			}),
+		{
+			label: `spam-and-off-topic-filter:${input.eventType}:${input.number}`,
+			attempts: 3,
+			perAttemptTimeoutMs: 90_000, // 90s — spam filter is fast
+			onRetry: ({ attempt, delayMs, error }) =>
+				console.log({
+					message: `Spam filter: model over capacity, backing off`,
+					event: "spam_and_off_topic_filter",
+					eventType: input.eventType,
+					number: input.number,
+					attempt,
+					delayMs,
+					error: String(error),
+					action: "capacity_retry",
+				}),
+		},
+	);
 
 	if (!data) {
 		console.log({

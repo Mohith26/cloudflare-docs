@@ -43,6 +43,7 @@ import type {
 	StyleGuideResult,
 } from "../lib/style-guide-results";
 import { writeDiffToR2 } from "../lib/code-review-diff";
+import { withCapacityRetry } from "../lib/capacity";
 import {
 	BOT_COMMENT_MARKER,
 	type DiffMode,
@@ -505,22 +506,42 @@ export async function run({ id: runId, init, payload, env, req }: FlueContext) {
 		// 	action: "reconciliation_skipped",
 		// });
 	} else {
-		const { data } = await session.skill("reconcile-code-review", {
-			model: "cloudflare/@cf/zai-org/glm-4.7-flash",
-			args: {
-				pullRequest: { number: input.number },
-				currentFindings: styleGuideResult.findings,
-				reviewedFiles: styleGuideResult.reviewedFiles,
-				previousFindings,
-				humanComments: humanCommentsAfterBot.map((c) => ({
-					author: c.user?.login ?? "unknown",
-					created_at: c.created_at,
-					body: c.body ?? "",
-				})),
-				diffMode,
+		const { data } = await withCapacityRetry(
+			(signal) =>
+				session.skill("reconcile-code-review", {
+					model: "cloudflare/@cf/zai-org/glm-4.7-flash",
+					signal,
+					args: {
+						pullRequest: { number: input.number },
+						currentFindings: styleGuideResult.findings,
+						reviewedFiles: styleGuideResult.reviewedFiles,
+						previousFindings,
+						humanComments: humanCommentsAfterBot.map((c) => ({
+							author: c.user?.login ?? "unknown",
+							created_at: c.created_at,
+							body: c.body ?? "",
+						})),
+						diffMode,
+					},
+					result: ReconcileResultSchema,
+				}),
+			{
+				label: `reconcile-code-review:${input.number}`,
+				attempts: 3,
+				perAttemptTimeoutMs: 2 * 60 * 1000, // 2 min — reconciler is fast
+				onRetry: ({ attempt, delayMs, error }) =>
+					console.log({
+						message: `Reconcile: model over capacity, backing off`,
+						event: "code_review_orchestrator",
+						number: input.number,
+						runId,
+						attempt,
+						delayMs,
+						error: String(error),
+						action: "capacity_retry",
+					}),
 			},
-			result: ReconcileResultSchema,
-		});
+		);
 
 		reconciled = data ?? {
 			active: styleGuideResult.findings,

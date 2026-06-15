@@ -25,6 +25,7 @@ import {
 	removeReactionFromComment,
 } from "../lib/github";
 import { makeDependabotReviewTools } from "../lib/github-repo-tools";
+import { withCapacityRetry } from "../lib/capacity";
 import {
 	BOT_COMMENT_MARKER,
 	DependabotReviewResultSchema,
@@ -168,15 +169,34 @@ export async function run({ id: runId, init, payload, env }: FlueContext) {
 	// ── 5. Run the skill ───────────────────────────────────────────────────────
 	let reviewResult: DependabotReviewResult | null = null;
 	try {
-		const { data } = await session.skill("dependabot-review", {
-			result: DependabotReviewResultSchema,
-			args: {
-				prNumber: input.number,
-				prTitle: pr.title,
-				prBody,
-				packages,
+		const { data } = await withCapacityRetry(
+			(signal) =>
+				session.skill("dependabot-review", {
+					signal,
+					result: DependabotReviewResultSchema,
+					args: {
+						prNumber: input.number,
+						prTitle: pr.title,
+						prBody,
+						packages,
+					},
+				}),
+			{
+				label: `dependabot-review:${input.number}`,
+				attempts: 4,
+				perAttemptTimeoutMs: 3 * 60 * 1000, // 3 min
+				onRetry: ({ attempt, delayMs, error }) =>
+					console.log({
+						message: `Dependabot review: model over capacity, backing off`,
+						event: "dependabot_review",
+						number: input.number,
+						attempt,
+						delayMs,
+						error: String(error),
+						action: "capacity_retry",
+					}),
 			},
-		});
+		);
 		reviewResult = data ?? null;
 	} catch (err) {
 		const errMsg = err instanceof Error ? err.message : String(err);
