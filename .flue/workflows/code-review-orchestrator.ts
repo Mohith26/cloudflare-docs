@@ -333,20 +333,31 @@ export async function run({ id: runId, init, payload, env, req }: FlueContext) {
 	// 	action: "r2_written",
 	// });
 
-	let styleGuideResult: StyleGuideResult;
-	try {
+	// Known failure summaries from the specialist — no output despite running.
+	// Treated as a retriable failure so we don't falsely post "no issues found".
+	const FANOUT_FAILURE_SUMMARIES = [
+		"Style-guide review produced no result.",
+		"Style-guide review failed.",
+	];
+
+	// Run the style-guide fan-out. Throws on dispatch/poll errors.
+	// Returns null when the specialist returned a known failure summary.
+	async function runStyleGuideFanout(
+		attempt: number,
+	): Promise<StyleGuideResult | null> {
 		const styleGuideFiles = selectStyleGuideFiles(allFiles);
 		const internalHeaders = getInternalHeaders(
 			typedEnv as Record<string, string>,
 		);
 		console.log({
-			message: `Style-guide review fan-out: PR #${input.number} — ${styleGuideFiles.length} file(s), concurrency ${STYLE_GUIDE_CONCURRENCY}`,
+			message: `Style-guide review fan-out: PR #${input.number} — ${styleGuideFiles.length} file(s), concurrency ${STYLE_GUIDE_CONCURRENCY}${attempt > 1 ? ` (attempt ${attempt})` : ""}`,
 			event: "code_review_orchestrator",
 			number: input.number,
 			files: styleGuideFiles.length,
 			concurrency: STYLE_GUIDE_CONCURRENCY,
 			diffDir,
 			runId,
+			attempt,
 			action: "style_guide_fanout_start",
 		});
 
@@ -354,7 +365,7 @@ export async function run({ id: runId, init, payload, env, req }: FlueContext) {
 			styleGuideFiles.map(
 				(file, index) => async () =>
 					dispatchStyleGuideReview(
-						`${runId}:style-guide:${index}`,
+						`${runId}:style-guide:${attempt}:${index}`,
 						input.number,
 						diffDir,
 						commentsPath,
@@ -365,96 +376,118 @@ export async function run({ id: runId, init, payload, env, req }: FlueContext) {
 			),
 			STYLE_GUIDE_CONCURRENCY,
 		);
-		styleGuideResult = mergeStyleGuideResults(styleGuideResults);
+		const result = mergeStyleGuideResults(styleGuideResults);
+
 		console.log({
-			message: `Style-guide review returned: PR #${input.number} — ${styleGuideResult.findings.length} finding(s) across ${styleGuideResult.reviewedFiles.length} file(s)`,
+			message: `Style-guide review returned: PR #${input.number} — ${result.findings.length} finding(s) across ${result.reviewedFiles.length} file(s)`,
 			event: "code_review_orchestrator",
 			number: input.number,
-			findings: styleGuideResult.findings.length,
-			reviewedFiles: styleGuideResult.reviewedFiles.length,
+			findings: result.findings.length,
+			reviewedFiles: result.reviewedFiles.length,
 			runId,
+			attempt,
 			action: "style_guide_complete",
 		});
 
-		// If the agent returned a known failure summary (e.g. model timed out
-		// and produced no output), surface a failure comment rather than
-		// falsely claiming no issues were found.
-		const FAILURE_SUMMARIES = [
-			"Style-guide review produced no result.",
-			"Style-guide review failed.",
-		];
 		if (
-			styleGuideResult.findings.length === 0 &&
-			FAILURE_SUMMARIES.includes(styleGuideResult.summary)
+			result.findings.length === 0 &&
+			FANOUT_FAILURE_SUMMARIES.includes(result.summary)
 		) {
-			if (reviewMode === "comment") {
-				const failureComment = renderFailureComment(currentHeadSha);
-				let targetComment = botComment;
-				if (targetComment === null) {
-					const freshComments = await getIssueComments(token, input.number);
-					targetComment =
-						freshComments.findLast((c) =>
-							c.body?.includes(BOT_COMMENT_MARKER),
-						) ?? null;
-				}
-				await postOrUpdateComment(
-					token,
-					input.number,
-					targetComment,
-					failureComment,
-				).catch(() => {});
-			}
-			return {
-				mode: reviewMode,
-				active: 0,
-				ignored: 0,
-				resolved: 0,
-				summary: styleGuideResult.summary,
-				commentBody: null,
-			};
+			return null;
 		}
-	} catch (err) {
-		const errMsg = err instanceof Error ? err.message : String(err);
+		return result;
+	}
+
+	// Helper to post the failure comment (used if both attempts fail).
+	async function postFanoutFailureComment(summary: string): Promise<void> {
+		if (reviewMode !== "comment") return;
+		const failureComment = renderFailureComment(currentHeadSha);
+		try {
+			let targetComment = botComment;
+			if (targetComment === null) {
+				const freshComments = await getIssueComments(token, input.number);
+				targetComment =
+					freshComments.findLast((c) =>
+						c.body?.includes(BOT_COMMENT_MARKER),
+					) ?? null;
+			}
+			await postOrUpdateComment(
+				token,
+				input.number,
+				targetComment,
+				failureComment,
+			);
+		} catch (postErr) {
+			console.log({
+				message: `Failed to post failure comment: PR #${input.number}`,
+				event: "code_review_orchestrator",
+				number: input.number,
+				error: postErr instanceof Error ? postErr.message : String(postErr),
+				runId,
+				action: "failure_comment_post_failed",
+			});
+		}
 		console.log({
-			message: `Style-guide review failed: PR #${input.number} — ${errMsg}`,
+			message: `Style-guide review failed after retries: PR #${input.number} — ${summary}`,
 			event: "code_review_orchestrator",
 			number: input.number,
-			error: errMsg,
+			error: summary,
 			runId,
 			action: "style_guide_failed",
 		});
+	}
 
-		// Update the placeholder comment to show failure rather than leaving
-		// it stuck on "Review in progress".
-		if (reviewMode === "comment") {
-			const failureComment = renderFailureComment(currentHeadSha);
-			try {
-				let targetComment = botComment;
-				if (targetComment === null) {
-					const freshComments = await getIssueComments(token, input.number);
-					targetComment =
-						freshComments.findLast((c) =>
-							c.body?.includes(BOT_COMMENT_MARKER),
-						) ?? null;
-				}
-				await postOrUpdateComment(
-					token,
-					input.number,
-					targetComment,
-					failureComment,
-				);
-			} catch (postErr) {
+	// ── 3. Run fan-out with one retry on failure ───────────────────────────────
+	// If the first attempt fails (throws or returns a known failure summary),
+	// wait 2 minutes and try once more before posting a failure comment.
+	// This handles transient capacity exhaustion without surfacing a false failure
+	// to the PR author.
+	const FANOUT_RETRY_DELAY_MS = 2 * 60 * 1000;
+
+	let styleGuideResult: StyleGuideResult;
+	let fanoutResult = await runStyleGuideFanout(1).catch(
+		(err): null => {
+			console.log({
+				message: `Style-guide review attempt 1 failed: PR #${input.number} — ${err instanceof Error ? err.message : String(err)}`,
+				event: "code_review_orchestrator",
+				number: input.number,
+				error: err instanceof Error ? err.message : String(err),
+				runId,
+				action: "style_guide_attempt_failed",
+			});
+			return null;
+		},
+	);
+
+	if (fanoutResult === null) {
+		// First attempt failed — wait and retry.
+		console.log({
+			message: `Style-guide review retrying in ${FANOUT_RETRY_DELAY_MS / 1000}s: PR #${input.number}`,
+			event: "code_review_orchestrator",
+			number: input.number,
+			runId,
+			action: "style_guide_fanout_retry",
+		});
+		await new Promise((resolve) => setTimeout(resolve, FANOUT_RETRY_DELAY_MS));
+
+		fanoutResult = await runStyleGuideFanout(2).catch(
+			(err): null => {
 				console.log({
-					message: `Failed to post failure comment: PR #${input.number}`,
+					message: `Style-guide review attempt 2 failed: PR #${input.number} — ${err instanceof Error ? err.message : String(err)}`,
 					event: "code_review_orchestrator",
 					number: input.number,
-					error: postErr instanceof Error ? postErr.message : String(postErr),
+					error: err instanceof Error ? err.message : String(err),
 					runId,
-					action: "failure_comment_post_failed",
+					action: "style_guide_attempt_failed",
 				});
-			}
-		}
+				return null;
+			},
+		);
+	}
 
+	if (fanoutResult === null) {
+		// Both attempts failed — post the failure comment and give up.
+		await postFanoutFailureComment("Style-guide review failed.");
 		return {
 			mode: reviewMode,
 			active: 0,
@@ -464,6 +497,8 @@ export async function run({ id: runId, init, payload, env, req }: FlueContext) {
 			commentBody: null,
 		};
 	}
+
+	styleGuideResult = fanoutResult;
 
 	// ── 4. Reconcile findings with review history and human comments ───────────
 	// Load previous findings from R2 (structured) rather than parsing the comment.
