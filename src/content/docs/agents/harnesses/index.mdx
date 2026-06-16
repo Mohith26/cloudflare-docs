@@ -12,7 +12,7 @@ A harness is the loop that makes an agent behave like an agent instead of a sing
 
 It is responsible for the turn-by-turn work around the model: building the prompt, loading memory, selecting tools, handling tool results, streaming responses, persisting messages, and deciding whether the agent should continue or stop.
 
-You can build this loop yourself on top of the [Agents SDK runtime](/agents/runtime/agents-api/), or use an opinionated harness like [Project Think](/agents/harnesses/think/), [Flue](/agents/harnesses/flue/), or [Pi](/agents/harnesses/pi/).
+You can build this loop yourself on top of the [Agents SDK runtime](/agents/runtime/agents-api/), or use an opinionated harness like [Project Think](/agents/harnesses/think/) or [Flue](/agents/harnesses/flue/).
 
 ## How harnesses fit
 
@@ -31,8 +31,6 @@ Use Project Think when you want an opinionated chat-agent harness with defaults 
 
 Use Flue when you want a TypeScript harness that can run locally and deploy generated agents and workflows onto Cloudflare Workers and Agents SDK Durable Objects.
 
-Use Pi when you want Pi's coding-agent loop inside a custom Worker API and an Agents SDK Durable Object.
-
 ## Current harnesses
 
 <LinkCard
@@ -45,12 +43,6 @@ Use Pi when you want Pi's coding-agent loop inside a custom Worker API and an Ag
 	title="Flue"
 	href="/agents/harnesses/flue/"
 	description="A TypeScript agent harness that deploys generated agents and workflows onto Cloudflare Workers."
-/>
-
-<LinkCard
-	title="Pi"
-	href="/agents/harnesses/pi/"
-	description="A minimal coding-agent harness that runs inside a custom Agents SDK Durable Object."
 />
 
 ## What a harness usually owns
