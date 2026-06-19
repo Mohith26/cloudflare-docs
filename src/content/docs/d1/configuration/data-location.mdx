@@ -106,14 +106,18 @@ To provide a location hint when creating a database via the dashboard:
 
 D1 supports the following location hints:
 
-| Hint | Hint description      |
-| ---- | --------------------- |
-| wnam | Western North America |
-| enam | Eastern North America |
-| weur | Western Europe        |
-| eeur | Eastern Europe        |
-| apac | Asia-Pacific          |
-| oc   | Oceania               |
+| Hint    | Hint description        |
+| ------- | ----------------------- |
+| wnam    | Western North America   |
+| enam    | Eastern North America   |
+| weur    | Western Europe          |
+| eeur    | Eastern Europe          |
+| apac    | Asia-Pacific            |
+| apac-ne | Northeast Asia-Pacific  |
+| apac-se | Southeast Asia-Pacific  |
+| oc      | Oceania                 |
+
+`apac-ne` and `apac-se` are narrower sub-regions within `apac`. Prefer `apac` for general Asia-Pacific placement. Choose `apac-ne` or `apac-se` only when your users are concentrated in the northeast or southeast of the region and you want to minimize latency for them.
 
 :::caution
 D1 location hints are not currently supported for South America (`sam`), Africa (`afr`), and the Middle East (`me`). D1 databases do not run in these locations.

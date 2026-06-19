@@ -3,6 +3,13 @@ link: "/d1/platform/release-notes/"
 productName: D1
 productLink: "/d1/"
 entries:
+  - publish_date: "2026-06-19"
+    title: D1 supports Northeast and Southeast Asia-Pacific location hints
+    description: |-
+      D1 now supports `apac-ne` and `apac-se` location hints for primary database placement and read replicas. Use these hints when your users are concentrated in Northeast or Southeast Asia-Pacific and you want to minimize latency for them.
+
+      For more information, refer to [Data location](/d1/configuration/data-location/).
+
   - publish_date: "2025-11-05"
     title: D1 can configure jurisdictions for data localization
     description: |-
