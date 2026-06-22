@@ -67,6 +67,7 @@ export { default as WARPReleases } from "./WARPReleases.astro";
 export { default as Width } from "./Width.astro";
 export { default as WorkersArchitectureDiagram } from "./WorkersArchitectureDiagram.astro";
 export { default as WorkersIsolateDiagram } from "./WorkersIsolateDiagram.astro";
+export { default as WorkerPreviewsDiagram } from "./WorkerPreviewsDiagram.astro";
 export { default as WorkersTemplates } from "./WorkersTemplates.astro";
 export { default as WorkersVPCEgressDiagram } from "./WorkersVPCEgressDiagram.astro";
 export { default as WorkersVPCOverviewDiagram } from "./WorkersVPCOverviewDiagram.astro";
