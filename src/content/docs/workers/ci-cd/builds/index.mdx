@@ -63,9 +63,9 @@ You can monitor a build's status and its build logs by navigating to **View buil
 A successful build produces different output depending on the branch:
 
 - Production branch builds create a new [version](/workers/configuration/versions-and-deployments/) under Version History. If the build is configured to deploy, that version is promoted to the Active Deployment.
-- Preview builds create or update a [Worker Preview](/workers/previews/). Preview builds run for branches that are not your production branch. The Preview URL is posted as a pull request comment and can also be found in the Previews section of your Worker.
+- Preview builds create or update a [Preview](/workers/previews/). Preview builds run for branches that are not your production branch. The Preview URL is posted as a pull request comment and can also be found in the Previews section of your Worker.
 
-To configure Preview settings such as variables, secrets, bindings, custom domains, or resource isolation, refer to [Worker Previews](/workers/previews/).
+To configure Preview settings such as variables, secrets, bindings, custom domains, or resource isolation, refer to [Previews](/workers/previews/).
 
 :::note[Builds, versions, deployments, Previews]
 
@@ -90,6 +90,6 @@ To disable automatic deployments while still allowing builds to run automaticall
 
 :::note
 
-Builds that run `wrangler versions upload` create Worker versions and [Version URLs](/workers/configuration/version-urls/). Version URLs use the resources configured for that Worker version. They are different from [Worker Previews](/workers/previews/), which are branch-oriented and can use Preview-specific settings.
+Builds that run `wrangler versions upload` create Worker versions and [Version URLs](/workers/configuration/version-urls/). Version URLs use the resources configured for that Worker version. They are different from [Previews](/workers/previews/), which are branch-oriented and can use Preview-specific settings.
 
 :::
